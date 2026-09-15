@@ -281,10 +281,10 @@ pub(crate) fn render(
                 .cmp(&b.metadata.creation_timestamp)
                 .then_with(|| a.metadata.name.cmp(&b.metadata.name))
         });
-        let template = without_hash(&spec["template"]);
+        let template = &spec["template"];
         let new = owned
             .iter()
-            .find(|rs| without_hash(&rs.data["spec"]["template"]) == template)
+            .find(|rs| templates_match(&rs.data["spec"]["template"], template))
             .copied();
         let old: Vec<_> = owned
             .iter()
@@ -312,15 +312,62 @@ fn owned_by(child: &DynamicObject, parent: &DynamicObject) -> bool {
         .find(|o| o.controller == Some(true))
         .is_some_and(|o| Some(&o.uid) == parent.metadata.uid.as_ref())
 }
-fn without_hash(template: &Value) -> Value {
-    let mut template = template.clone();
-    if let Some(labels) = template
-        .pointer_mut("/metadata/labels")
-        .and_then(Value::as_object_mut)
-    {
-        labels.remove("pod-template-hash");
-    }
-    template
+/// The label the Deployment controller stamps onto each ReplicaSet's template,
+/// and the only reason a current ReplicaSet's template differs from its
+/// Deployment's.
+const POD_TEMPLATE_HASH: &str = "pod-template-hash";
+
+/// Compare two pod templates while ignoring `pod-template-hash`.
+///
+/// A pod template carries every container, env var, probe and volume of the
+/// workload, and the previous approach deep-copied one per ReplicaSet just to
+/// drop a single label before `==`. Walking both in place reaches the same
+/// answer without allocating.
+fn templates_match(a: &Value, b: &Value) -> bool {
+    object_match(a, b, |key, x, y| {
+        if key == "metadata" {
+            metadata_match(x, y)
+        } else {
+            x == y
+        }
+    })
+}
+
+fn metadata_match(a: &Value, b: &Value) -> bool {
+    object_match(a, b, |key, x, y| {
+        if key == "labels" {
+            labels_match(x, y)
+        } else {
+            x == y
+        }
+    })
+}
+
+fn labels_match(a: &Value, b: &Value) -> bool {
+    let (Some(x), Some(y)) = (a.as_object(), b.as_object()) else {
+        return a == b;
+    };
+    let kept = |m: &serde_json::Map<String, Value>| {
+        m.len() - usize::from(m.contains_key(POD_TEMPLATE_HASH))
+    };
+    kept(x) == kept(y)
+        && x.iter()
+            .filter(|(key, _)| key.as_str() != POD_TEMPLATE_HASH)
+            .all(|(key, value)| y.get(key) == Some(value))
+}
+
+/// Compare two JSON objects key by key, deferring to `compare` for the values.
+/// Non-objects fall back to plain equality, matching what a clone-and-compare
+/// did for a missing or malformed template.
+fn object_match(a: &Value, b: &Value, compare: impl Fn(&str, &Value, &Value) -> bool) -> bool {
+    let (Some(x), Some(y)) = (a.as_object(), b.as_object()) else {
+        return a == b;
+    };
+    x.len() == y.len()
+        && x.iter().all(|(key, value)| match y.get(key) {
+            Some(other) => compare(key, value, other),
+            None => false,
+        })
 }
 fn replica_sets(sets: &[&DynamicObject]) -> String {
     if sets.is_empty() {

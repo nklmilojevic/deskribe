@@ -351,24 +351,84 @@ impl std::fmt::Display for Quantity {
         f.write_str(&quantity::canonical(&format!("{}n", self.nanos)))
     }
 }
-type Resources = BTreeMap<String, Quantity>;
-fn quantities(value: &Value) -> Resources {
-    value
+/// A resource list, keyed by names borrowed from the object being described.
+///
+/// A Kubernetes resource list holds a handful of entries — cpu, memory,
+/// occasionally ephemeral-storage or a device-plugin name — and a node builds
+/// several of them per container per pod. A sorted `Vec` allocates once per
+/// list where a `BTreeMap` allocated per entry, and at this size a linear
+/// insert beats a tree descent. Iteration stays in key order, so rendered
+/// output is unchanged.
+#[derive(Clone, Default)]
+struct Resources<'a>(Vec<(&'a str, Quantity)>);
+
+impl<'a> Resources<'a> {
+    fn new() -> Self {
+        Self(Vec::new())
+    }
+    fn slot(&self, key: &str) -> Result<usize, usize> {
+        self.0.binary_search_by(|(name, _)| (*name).cmp(key))
+    }
+    fn get(&self, key: &str) -> Option<&Quantity> {
+        self.slot(key).ok().map(|i| &self.0[i].1)
+    }
+    fn insert(&mut self, key: &'a str, value: Quantity) {
+        match self.slot(key) {
+            Ok(i) => self.0[i].1 = value,
+            Err(i) => self.0.insert(i, (key, value)),
+        }
+    }
+    /// The entry for `key`, inserted as zero when absent.
+    fn entry(&mut self, key: &'a str) -> &mut Quantity {
+        let i = match self.slot(key) {
+            Ok(i) => i,
+            Err(i) => {
+                self.0.insert(i, (key, Quantity::default()));
+                i
+            }
+        };
+        &mut self.0[i].1
+    }
+    #[cfg(test)]
+    fn contains_key(&self, key: &str) -> bool {
+        self.slot(key).is_ok()
+    }
+    fn keys(&self) -> impl Iterator<Item = &'a str> + '_ {
+        self.0.iter().map(|(name, _)| *name)
+    }
+    fn iter(&self) -> impl Iterator<Item = (&'a str, Quantity)> + '_ {
+        self.0.iter().map(|(name, value)| (*name, *value))
+    }
+}
+
+impl std::ops::Index<&str> for Resources<'_> {
+    type Output = Quantity;
+    fn index(&self, key: &str) -> &Quantity {
+        self.get(key).expect("no such resource")
+    }
+}
+
+fn quantities(value: &Value) -> Resources<'_> {
+    let mut list: Vec<_> = value
         .as_object()
         .into_iter()
         .flatten()
-        .map(|(k, v)| (k.clone(), Quantity::from_value(v)))
-        .collect()
+        .map(|(k, v)| (k.as_str(), Quantity::from_value(v)))
+        .collect();
+    // serde_json's map is ordered unless `preserve_order` is on; sort so the
+    // invariant holds either way. These lists are tiny.
+    list.sort_unstable_by(|a, b| a.0.cmp(b.0));
+    Resources(list)
 }
-fn add(into: &mut Resources, other: &Resources) {
-    for (k, v) in other {
-        into.entry(k.clone()).or_default().add(*v);
+fn add<'a>(into: &mut Resources<'a>, other: &Resources<'a>) {
+    for (k, v) in other.iter() {
+        into.entry(k).add(v);
     }
 }
-fn maximum(into: &mut Resources, other: &Resources) {
-    for (k, v) in other {
+fn maximum<'a>(into: &mut Resources<'a>, other: &Resources<'a>) {
+    for (k, v) in other.iter() {
         if into.get(k).is_none_or(|old| old.nanos < v.nanos) {
-            into.insert(k.clone(), *v);
+            into.insert(k, v);
         }
     }
 }
@@ -380,19 +440,25 @@ enum ResourceView {
     Actuated,
 }
 
-fn aggregate_containers(
-    pod: &DynamicObject,
-    field: &str,
-    view: ResourceView,
-    infeasible: bool,
-) -> Resources {
-    let spec = &pod.data["spec"];
-    let statuses: BTreeMap<_, _> = items(&pod.data["status"]["containerStatuses"])
+/// Index a pod's container statuses by name. Built once per pod and shared by
+/// every aggregate over it.
+fn status_index(pod: &DynamicObject) -> BTreeMap<&str, &Value> {
+    items(&pod.data["status"]["containerStatuses"])
         .iter()
         .chain(items(&pod.data["status"]["initContainerStatuses"]))
         .map(|s| (text(&s["name"]), s))
-        .collect();
-    let container_resources = |container: &Value| {
+        .collect()
+}
+
+fn aggregate_containers<'a>(
+    pod: &'a DynamicObject,
+    statuses: &BTreeMap<&str, &'a Value>,
+    field: &str,
+    view: ResourceView,
+    infeasible: bool,
+) -> Resources<'a> {
+    let spec = &pod.data["spec"];
+    let container_resources = |container: &'a Value| {
         let status = statuses
             .get(text(&container["name"]))
             .copied()
@@ -432,41 +498,73 @@ fn aggregate_containers(
     total
 }
 
-fn pod_resources(pod: &DynamicObject, field: &str, use_status: bool) -> Resources {
+/// Apply the pod-level resources and overhead that sit outside the containers.
+fn apply_pod_level<'a>(total: &mut Resources<'a>, spec: &'a Value, field: &str) {
+    let pod_level = quantities(&spec["resources"][field]);
+    for (name, value) in pod_level.iter() {
+        if pod_level_resource(name) {
+            total.insert(name, value);
+        }
+    }
+    let overhead = quantities(&spec["overhead"]);
+    for (name, value) in overhead.iter() {
+        if field == "requests" || total.get(name).is_some_and(|q| q.nanos != 0) {
+            total.entry(name).add(value);
+        }
+    }
+}
+
+/// Both views of one field a node needs: the status-aware value shown per pod
+/// row, and the spec-only value the node totals are built from.
+///
+/// The node describer needs both for requests and for limits, and the
+/// spec-only aggregate is a sub-computation of the status-aware one. Computing
+/// them apart re-walked every container of every pod — and re-parsed every
+/// quantity string — four times per pod.
+fn pod_resources_both<'a>(
+    pod: &'a DynamicObject,
+    statuses: &BTreeMap<&str, &'a Value>,
+    field: &str,
+) -> (Resources<'a>, Resources<'a>) {
     let spec = &pod.data["spec"];
-    let infeasible = use_status
-        && items(&pod.data["status"]["conditions"])
-            .iter()
-            .find(|c| text(&c["type"]) == "PodResizePending")
-            .is_some_and(|c| text(&c["reason"]) == "Infeasible");
+    let infeasible = items(&pod.data["status"]["conditions"])
+        .iter()
+        .find(|c| text(&c["type"]) == "PodResizePending")
+        .is_some_and(|c| text(&c["reason"]) == "Infeasible");
+    let base = aggregate_containers(pod, statuses, field, ResourceView::Spec, false);
     // Match v0.37's maximum of whole-pod aggregates, not a sum of per-container maxima.
     let mut total = if infeasible {
         Resources::new()
     } else {
-        aggregate_containers(pod, field, ResourceView::Spec, false)
+        base.clone()
     };
-    if use_status {
+    maximum(
+        &mut total,
+        &aggregate_containers(pod, statuses, field, ResourceView::Actuated, infeasible),
+    );
+    if field == "requests" {
         maximum(
             &mut total,
-            &aggregate_containers(pod, field, ResourceView::Actuated, infeasible),
+            &aggregate_containers(pod, statuses, field, ResourceView::Allocated, infeasible),
         );
-        if field == "requests" {
-            maximum(
-                &mut total,
-                &aggregate_containers(pod, field, ResourceView::Allocated, infeasible),
-            );
-        }
     }
-    for (name, value) in quantities(&spec["resources"][field]) {
-        if pod_level_resource(&name) {
-            total.insert(name, value);
-        }
+    let mut from_spec = base;
+    apply_pod_level(&mut total, spec, field);
+    apply_pod_level(&mut from_spec, spec, field);
+    (total, from_spec)
+}
+
+/// Single-field helper retained for the unit tests, which assert one view at a
+/// time. The describer itself computes both views together.
+#[cfg(test)]
+fn pod_resources<'a>(pod: &'a DynamicObject, field: &str, use_status: bool) -> Resources<'a> {
+    let spec = &pod.data["spec"];
+    let statuses = status_index(pod);
+    if use_status {
+        return pod_resources_both(pod, &statuses, field).0;
     }
-    for (name, value) in quantities(&spec["overhead"]) {
-        if field == "requests" || total.get(&name).is_some_and(|q| q.nanos != 0) {
-            total.entry(name).or_default().add(value);
-        }
-    }
+    let mut total = aggregate_containers(pod, &statuses, field, ResourceView::Spec, false);
+    apply_pod_level(&mut total, spec, field);
     total
 }
 
@@ -491,8 +589,9 @@ fn resources(out: &mut String, pods: &[DynamicObject], node: &DynamicObject, now
     writeln!(out,"Non-terminated Pods:\t({} in total)\n  Namespace\tName\t\tCPU Requests\tCPU Limits\tMemory Requests\tMemory Limits\tAge\n  ---------\t----\t\t------------\t----------\t---------------\t-------------\t---",pods.len()).unwrap();
     let (mut requests, mut limits) = (Resources::new(), Resources::new());
     for pod in pods {
-        let req = pod_resources(pod, "requests", true);
-        let lim = pod_resources(pod, "limits", true);
+        let statuses = status_index(pod);
+        let (req, req_spec) = pod_resources_both(pod, &statuses, "requests");
+        let (lim, lim_spec) = pod_resources_both(pod, &statuses, "limits");
         write!(
             out,
             "  {}\t{}\t",
@@ -526,23 +625,17 @@ fn resources(out: &mut String, pods: &[DynamicObject], node: &DynamicObject, now
         )
         .unwrap();
         // Upstream uses spec resources for the totals, status-aware values for each row.
-        add(&mut requests, &pod_resources(pod, "requests", false));
-        add(&mut limits, &pod_resources(pod, "limits", false));
+        add(&mut requests, &req_spec);
+        add(&mut limits, &lim_spec);
     }
     out.push_str("Allocated resources:\n  (Total limits may be over 100 percent, i.e., overcommitted.)\n  Resource\tRequests\tLimits\n  --------\t--------\t------\n");
     let standard = ["cpu", "memory", "ephemeral-storage"];
     let names = standard
         .into_iter()
+        .chain(allocatable.keys().filter(|n| n.starts_with("hugepages-")))
         .chain(
             allocatable
                 .keys()
-                .map(String::as_str)
-                .filter(|n| n.starts_with("hugepages-")),
-        )
-        .chain(
-            allocatable
-                .keys()
-                .map(String::as_str)
                 .filter(|n| !standard.contains(n) && *n != "pods" && !n.starts_with("hugepages-")),
         );
     for name in names {

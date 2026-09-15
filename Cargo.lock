@@ -234,6 +234,8 @@ dependencies = [
  "http-body-util",
  "k8s-openapi",
  "kube",
+ "memchr",
+ "serde",
  "serde_json",
  "tokio",
  "tower",

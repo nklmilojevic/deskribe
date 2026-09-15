@@ -14,6 +14,7 @@ use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use k8s_openapi::jiff::Timestamp;
 use k8s_openapi::jiff::tz::TimeZone;
 use kube::api::DynamicObject;
+use serde::Deserialize;
 use serde_json::Value;
 use std::fmt::Write;
 
@@ -187,8 +188,8 @@ pub(crate) fn template(out: &mut String, template: &Value, zone: &TimeZone) {
         out.push_str("  <unset>");
         return;
     }
-    let meta =
-        serde_json::from_value::<ObjectMeta>(template["metadata"].clone()).unwrap_or_default();
+    // Borrow the metadata rather than cloning the subtree into `from_value`.
+    let meta = ObjectMeta::deserialize(&template["metadata"]).unwrap_or_default();
     // Indent section titles only. Keep continuation lines at their current level.
     out.push_str(&label_section(&meta, "  "));
     if meta.annotations.as_ref().is_some_and(|a| !a.is_empty()) {
