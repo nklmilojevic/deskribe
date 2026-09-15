@@ -1,0 +1,250 @@
+{
+  "plural": "nodes",
+  "object": {
+    "apiVersion": "v1",
+    "kind": "Node",
+    "metadata": {
+      "name": "demo",
+      "uid": "demo-uid",
+      "creationTimestamp": "2026-01-01T00:00:00Z",
+      "labels": {
+        "node-role.kubernetes.io/control-plane": "",
+        "kubernetes.io/role": "worker"
+      }
+    },
+    "spec": {
+      "taints": [
+        {
+          "key": "dedicated",
+          "value": "test",
+          "effect": "NoSchedule"
+        },
+        {
+          "key": "unreachable",
+          "effect": "NoExecute"
+        }
+      ],
+      "podCIDR": "10.0.0.0/24",
+      "podCIDRs": ["10.0.0.0/24", "fd00::/64"],
+      "providerID": "test://node/demo"
+    },
+    "status": {
+      "addresses": [
+        {
+          "type": "InternalIP",
+          "address": "192.0.2.1"
+        }
+      ],
+      "capacity": {
+        "cpu": "8",
+        "memory": "16Gi",
+        "ephemeral-storage": "100Gi",
+        "pods": "100",
+        "hugepages-2Mi": "1Gi",
+        "example.org/gpu": "4"
+      },
+      "allocatable": {
+        "cpu": "4",
+        "memory": "8Gi",
+        "ephemeral-storage": "80Gi",
+        "pods": "90",
+        "hugepages-2Mi": "1Gi",
+        "example.org/gpu": "4"
+      },
+      "nodeInfo": {
+        "machineID": "machine",
+        "systemUUID": "system",
+        "bootID": "boot",
+        "kernelVersion": "6.1",
+        "osImage": "Test Linux",
+        "operatingSystem": "linux",
+        "architecture": "amd64",
+        "containerRuntimeVersion": "containerd://2.0",
+        "kubeletVersion": "v1.35.1",
+        "kubeProxyVersion": ""
+      },
+      "conditions": [
+        {
+          "type": "Ready",
+          "status": "True",
+          "lastHeartbeatTime": "2026-01-01T00:00:00Z",
+          "lastTransitionTime": "2026-01-01T00:00:00Z",
+          "reason": "KubeletReady",
+          "message": "Ready"
+        }
+      ]
+    }
+  },
+  "events": [],
+  "relatedPath": "/api/v1/pods",
+  "relatedSelector": "",
+  "relatedFieldSelector": "spec.nodeName=demo,status.phase!=Succeeded,status.phase!=Failed",
+  "related": [
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "web",
+        "namespace": "default",
+        "uid": "web-uid"
+      },
+      "spec": {
+        "nodeName": "demo",
+        "containers": [
+          {
+            "name": "web",
+            "resources": {
+              "requests": {
+                "cpu": "100m",
+                "memory": "128Mi",
+                "example.org/gpu": "1",
+                "hugepages-2Mi": "4Mi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "256Mi",
+                "example.org/gpu": "1",
+                "hugepages-2Mi": "4Mi"
+              }
+            }
+          }
+        ],
+        "initContainers": [
+          {
+            "name": "sidecar",
+            "restartPolicy": "Always",
+            "resources": {
+              "requests": {
+                "cpu": "200m",
+                "memory": "64Mi"
+              },
+              "limits": {
+                "cpu": "500m",
+                "memory": "128Mi"
+              }
+            }
+          },
+          {
+            "name": "init",
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "256Mi"
+              },
+              "limits": {
+                "cpu": "2",
+                "memory": "512Mi"
+              }
+            }
+          }
+        ],
+        "overhead": {
+          "cpu": "10m",
+          "memory": "16Mi"
+        }
+      },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          {
+            "name": "web",
+            "resources": {
+              "requests": {
+                "cpu": "150m",
+                "memory": "128Mi"
+              }
+            },
+            "allocatedResources": {
+              "cpu": "200m",
+              "memory": "128Mi"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "resizing",
+        "namespace": "other",
+        "uid": "resize-uid"
+      },
+      "spec": {
+        "nodeName": "demo",
+        "containers": [
+          {
+            "name": "worker",
+            "resources": {
+              "requests": {
+                "cpu": "2",
+                "memory": "1Gi",
+                "ephemeral-storage": "2Gi"
+              },
+              "limits": {
+                "cpu": "3",
+                "memory": "2Gi"
+              }
+            }
+          }
+        ],
+        "resources": {
+          "requests": {
+            "cpu": "100"
+          }
+        }
+      },
+      "status": {
+        "phase": "Pending",
+        "conditions": [
+          {
+            "type": "PodResizePending",
+            "status": "True",
+            "reason": "Infeasible"
+          }
+        ],
+        "containerStatuses": [
+          {
+            "name": "worker",
+            "resources": {
+              "requests": {
+                "cpu": "500m",
+                "memory": "256Mi"
+              }
+            },
+            "allocatedResources": {
+              "cpu": "1",
+              "memory": "512Mi"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "nodeLease": {
+    "apiVersion": "coordination.k8s.io/v1",
+    "kind": "Lease",
+    "metadata": {
+      "name": "demo",
+      "namespace": "kube-node-lease"
+    },
+    "spec": {
+      "holderIdentity": "demo",
+      "renewTime": "2026-01-01T00:00:00.000000Z"
+    }
+  },
+  "responses": {
+    "/apis/coordination.k8s.io/v1/namespaces/kube-node-lease/leases/demo": {
+      "apiVersion": "coordination.k8s.io/v1",
+      "kind": "Lease",
+      "metadata": {
+        "name": "demo",
+        "namespace": "kube-node-lease"
+      },
+      "spec": {
+        "holderIdentity": "demo",
+        "renewTime": "2026-01-01T00:00:00.000000Z"
+      }
+    }
+  }
+}

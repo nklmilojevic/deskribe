@@ -1,0 +1,43 @@
+{
+  "plural": "services",
+  "object": {
+    "apiVersion": "v1",
+    "kind": "Service",
+    "metadata": {"name":"demo","namespace":"default","uid":"demo-uid"},
+    "spec": {
+      "selector": {"app":"web"},
+      "type": "LoadBalancer",
+      "ipFamilyPolicy":"PreferDualStack",
+      "ipFamilies":["IPv4","IPv6"],
+      "clusterIP":"10.96.0.1",
+      "clusterIPs":["10.96.0.1","fd00::1"],
+      "ports":[{"name":"http","port":80,"targetPort":"http","nodePort":30080,"protocol":"TCP"}],
+      "sessionAffinity":"None",
+      "externalTrafficPolicy":"Local",
+      "internalTrafficPolicy":"Cluster",
+      "healthCheckNodePort":30100,
+      "loadBalancerSourceRanges":["10.0.0.0/8"],
+      "trafficDistribution":"PreferClose"
+    },
+    "status":{"loadBalancer":{"ingress":[{"ip":"192.0.2.1","ipMode":"VIP"}]}}
+  },
+  "events": [],
+  "relatedPath":"/apis/discovery.k8s.io/v1/namespaces/default/endpointslices",
+  "relatedSelector":"kubernetes.io/service-name=demo",
+  "relatedKind":"EndpointSlice",
+  "relatedVersion":"discovery.k8s.io/v1",
+  "related":[{
+    "apiVersion":"discovery.k8s.io/v1",
+    "kind":"EndpointSlice",
+    "metadata":{"name":"demo","namespace":"default"},
+    "addressType":"IPv4",
+    "ports":[{"name":"http","port":8080,"protocol":"TCP"}],
+    "endpoints":[
+      {"addresses":["10.0.0.1"],"conditions":{"ready":true}},
+      {"addresses":["10.0.0.2"],"conditions":{}},
+      {"addresses":["10.0.0.3"],"conditions":{"ready":false}},
+      {"addresses":["10.0.0.4"],"conditions":{"ready":true}},
+      {"addresses":["10.0.0.5"],"conditions":{"ready":true}}
+    ]
+  }]
+}

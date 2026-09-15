@@ -1,0 +1,21 @@
+Name:              demo
+Labels:            <none>
+Annotations:       <none>
+Finalizers:        [kubernetes.io/pv-protection]
+StorageClass:      fast
+Status:            Bound
+Claim:             default/claim
+Reclaim Policy:    Retain
+Access Modes:      RWO
+VolumeMode:        Filesystem
+Capacity:          1Gi
+Node Affinity:     
+  Required Terms:  
+    Term 0:        topology.kubernetes.io/zone in [zone-a, zone-b]
+                   disk exists
+Message:           
+Source:
+    Type:    PhotonPersistentDisk (a Persistent Disk resource in photon platform)
+    PdID:    disk
+    FSType:  ext4
+Events:      <none>

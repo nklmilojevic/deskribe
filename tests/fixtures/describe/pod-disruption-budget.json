@@ -1,0 +1,25 @@
+{
+  "plural": "poddisruptionbudgets",
+  "object": {
+    "apiVersion": "policy/v1",
+    "kind": "PodDisruptionBudget",
+    "metadata": { "name": "demo", "namespace": "default", "uid": "demo-uid" },
+    "spec": {
+      "minAvailable": "50%",
+      "selector": {
+        "matchLabels": { "app": "web" },
+        "matchExpressions": [
+          { "key": "tier", "operator": "In", "values": ["frontend", "backend"] },
+          { "key": "maintenance", "operator": "DoesNotExist" }
+        ]
+      }
+    },
+    "status": {
+      "disruptionsAllowed": 1,
+      "currentHealthy": 3,
+      "desiredHealthy": 2,
+      "expectedPods": 4
+    }
+  },
+  "events": []
+}

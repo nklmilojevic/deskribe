@@ -1,0 +1,31 @@
+Name:         demo
+Namespace:    default
+Labels:       <none>
+Annotations:  <none>
+
+Data
+====
+tabs:
+----
+   a  b
+c  d
+   
+e  f  
+
+
+form
+feed
+
+
+trailing  
+
+unicode:
+----
+世  é
+   end
+
+
+BinaryData
+====
+
+Events:  <none>

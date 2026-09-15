@@ -1,0 +1,24 @@
+Name:         demo
+Namespace:    default
+Labels:       app=test
+Annotations:  <none>
+API Version:  example.com/v1
+Kind:         Widget
+Metadata:
+  Resource Version:  1
+  UID:               demo-uid
+Spec:
+  API URL:  https://example.invalid
+  Enabled:  true
+  Members:
+    Name:    first
+    Weight:  2
+    Name:    second
+    Weight:  3
+  Nullable:  <nil>
+  Raw - Values:
+    a
+    b
+Status:
+  Phase:  Ready
+Events:   <none>

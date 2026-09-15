@@ -1,0 +1,34 @@
+{
+  "plural": "certificatesigningrequests",
+  "object": {
+    "apiVersion": "certificates.k8s.io/v1",
+    "kind": "CertificateSigningRequest",
+    "metadata": {
+      "name": "demo",
+      "uid": "demo-uid",
+      "creationTimestamp": "2026-01-01T00:00:00Z",
+      "labels": {
+        "app": "web"
+      }
+    },
+    "spec": {
+      "request": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQmlUQ0NBVHNDQVFBd2dZZ3hGREFTQmdOVkJBTU1DMlY0WVcxd2JHVXViM0puTVF3d0NnWURWUVFGRXdNeApNak14RURBT0JnTlZCQW9NQjBWNFlXMXdiR1V4RHpBTkJnTlZCQW9NQmxObFkyOXVaREVPTUF3R0ExVUVDd3dGClZHVnpkSE14Q3pBSkJnTlZCQVlUQWxWVE1STXdFUVlEVlFRSURBcERZV3hwWm05eWJtbGhNUTB3Q3dZRFZRUUgKREFSVVpYTjBNQ293QlFZREsyVndBeUVBZkM3MzZUYWVteG50bHdjek4xOFJRdTVQTXlEdlVLL2Ryc09LNjR4TQpTSkNnZnpCOUJna3Foa2lHOXcwQkNRNHhjREJ1TUd3R0ExVWRFUVJsTUdPQ0MyVjRZVzF3YkdVdWIzSm5nZzloCmJIUXVaWGhoYlhCc1pTNXZjbWVCRUhSbGMzUkFaWGhoYlhCc1pTNXZjbWVHR1hOd2FXWm1aVG92TDJWNFlXMXcKYkdVdWIzSm5MM1JsYzNTSEJNQUFBZ0dIRUNBQkRiZ0FBQUFBQUFBQUFBQUFBQUV3QlFZREsyVndBMEVBcnEzYgpSY0V5S1NvQWJ0YmJZMjVCY1VEYWZ4NkNSQzFMTVZiUUFBVUdTbjIvbWlmczM3OXJzdzN2NlJaTFZjTWNSSVUvClNFTkYvc3hweU05YytVVVRBQT09Ci0tLS0tRU5EIENFUlRJRklDQVRFIFJFUVVFU1QtLS0tLQo=",
+      "signerName": "example.org/test",
+      "expirationSeconds": 90000,
+      "username": "test-user",
+      "usages": [
+        "client auth"
+      ]
+    },
+    "status": {
+      "conditions": [
+        {
+          "type": "Approved",
+          "status": "True"
+        }
+      ],
+      "certificate": "c3ludGhldGljIGZpeHR1cmU="
+    }
+  },
+  "events": []
+}

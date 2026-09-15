@@ -1,0 +1,42 @@
+{
+  "plural": "endpointslices",
+  "object": {
+    "apiVersion": "discovery.k8s.io/v1",
+    "kind": "EndpointSlice",
+    "metadata": {
+      "name": "demo",
+      "uid": "demo-uid",
+      "creationTimestamp": "2026-01-01T00:00:00Z",
+      "namespace": "default"
+    },
+    "addressType": "IPv4",
+    "ports": [
+      {
+        "name": "http",
+        "port": 8080,
+        "protocol": "TCP"
+      }
+    ],
+    "endpoints": [
+      {
+        "addresses": ["10.0.0.1"],
+        "conditions": {
+          "ready": true,
+          "serving": true
+        },
+        "hostname": "demo",
+        "nodeName": "node",
+        "zone": "west",
+        "targetRef": {
+          "kind": "Pod",
+          "name": "pod"
+        }
+      },
+      {
+        "addresses": ["10.0.0.2"],
+        "conditions": {}
+      }
+    ]
+  },
+  "events": []
+}

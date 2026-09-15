@@ -1,0 +1,5 @@
+Name:       demo
+Namespace:  default
+Type        Resource  Min   Max  Default Request  Default Limit  Max Limit/Request Ratio
+----        --------  ---   ---  ---------------  -------------  -----------------------
+Container   cpu       100m  2    500m             1              4

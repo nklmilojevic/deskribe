@@ -1,0 +1,20 @@
+{
+  "plural": "pods",
+  "object": {
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+      "name": "demo",
+      "namespace": "default",
+      "uid": "demo-uid",
+      "creationTimestamp": "2026-01-01T00:00:00Z"
+    },
+    "spec": {
+      "containers": []
+    },
+    "status": {
+      "phase": "Pending"
+    }
+  },
+  "events": []
+}

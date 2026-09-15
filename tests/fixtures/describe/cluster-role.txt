@@ -1,0 +1,13 @@
+Name:         demo
+Labels:       <none>
+Annotations:  <none>
+PolicyRule:
+  Resources               Non-Resource URLs  Resource Names  Verbs
+  ---------               -----------------  --------------  -----
+  pods                    []                 [demo]          [get update]
+                          [/healthz]         []              [get]
+                          [/version]         []              [get]
+  deployments/scale       []                 []              [list get watch]
+  pods                    []                 []              [list get watch]
+  deployments.apps/scale  []                 []              [list get watch]
+  pods.apps               []                 []              [list get watch]

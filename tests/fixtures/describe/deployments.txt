@@ -1,0 +1,29 @@
+Name:                   demo
+Namespace:              default
+CreationTimestamp:      Thu, 01 Jan 2026 00:00:00 +0000
+Labels:                 app=web
+Annotations:            <none>
+Selector:               app=web
+Replicas:               3 desired | 2 updated | 2 total | 1 available | 2 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        10
+RollingUpdateStrategy:  1 max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=web
+  Containers:
+   web:
+    Image:         example.invalid/web
+    Port:          <none>
+    Host Port:     <none>
+    Environment:   <none>
+    Mounts:        <none>
+  Volumes:         <none>
+  Node-Selectors:  <none>
+  Tolerations:     <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    Ready
+OldReplicaSets:  old (1/1 replicas created)
+NewReplicaSet:   new (2/2 replicas created)
+Events:          <none>

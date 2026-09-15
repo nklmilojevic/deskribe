@@ -1,0 +1,27 @@
+{
+  "plural": "storageclasses",
+  "object": {
+    "apiVersion": "storage.k8s.io/v1",
+    "kind": "StorageClass",
+    "metadata": {
+      "name": "demo",
+      "uid": "demo-uid",
+      "annotations": { "storageclass.kubernetes.io/is-default-class": "true" }
+    },
+    "provisioner": "example.com/csi",
+    "parameters": { "type": "ssd", "encrypted": "true" },
+    "allowVolumeExpansion": true,
+    "mountOptions": ["noatime", "discard"],
+    "reclaimPolicy": "Delete",
+    "volumeBindingMode": "WaitForFirstConsumer",
+    "allowedTopologies": [
+      {
+        "matchLabelExpressions": [
+          { "key": "topology.kubernetes.io/zone", "values": ["a", "b"] },
+          { "key": "rack", "values": ["west"] }
+        ]
+      }
+    ]
+  },
+  "events": []
+}

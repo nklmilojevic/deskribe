@@ -1,0 +1,336 @@
+{
+  "plural": "pods",
+  "object": {
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+      "name": "demo",
+      "namespace": "default",
+      "uid": "demo-uid",
+      "creationTimestamp": "2026-01-01T00:00:00Z"
+    },
+    "spec": {
+      "containers": [],
+      "volumes": [
+        {
+          "name": "volume-0",
+          "hostPath": {
+            "path": "/data",
+            "type": "Directory"
+          }
+        },
+        {
+          "name": "volume-1",
+          "emptyDir": {
+            "medium": "Memory",
+            "sizeLimit": "1Gi"
+          }
+        },
+        {
+          "name": "volume-2",
+          "gcePersistentDisk": {
+            "pdName": "disk",
+            "fsType": "ext4",
+            "partition": 1,
+            "readOnly": true
+          }
+        },
+        {
+          "name": "volume-3",
+          "awsElasticBlockStore": {
+            "volumeID": "vol-1",
+            "fsType": "ext4",
+            "partition": 2
+          }
+        },
+        {
+          "name": "volume-4",
+          "gitRepo": {
+            "repository": "https://example.org/repo.git",
+            "revision": "main"
+          }
+        },
+        {
+          "name": "volume-5",
+          "secret": {
+            "secretName": "credentials",
+            "optional": true
+          }
+        },
+        {
+          "name": "volume-6",
+          "configMap": {
+            "name": "config",
+            "optional": true
+          }
+        },
+        {
+          "name": "volume-7",
+          "nfs": {
+            "server": "192.0.2.1",
+            "path": "/data",
+            "readOnly": true
+          }
+        },
+        {
+          "name": "volume-8",
+          "iscsi": {
+            "targetPortal": "192.0.2.1:3260",
+            "iqn": "iqn.2026-01.org.example:test",
+            "lun": 2,
+            "iscsiInterface": "default",
+            "fsType": "ext4",
+            "readOnly": true,
+            "portals": ["192.0.2.2:3260"],
+            "chapAuthDiscovery": true,
+            "chapAuthSession": true,
+            "secretRef": {
+              "name": "credentials",
+              "namespace": "default"
+            },
+            "initiatorName": "iqn.2026-01.org.example:client"
+          }
+        },
+        {
+          "name": "volume-9",
+          "glusterfs": {
+            "endpoints": "gluster",
+            "endpointsNamespace": "storage",
+            "path": "data",
+            "readOnly": true
+          }
+        },
+        {
+          "name": "volume-10",
+          "persistentVolumeClaim": {
+            "claimName": "data",
+            "readOnly": true
+          }
+        },
+        {
+          "name": "volume-11",
+          "rbd": {
+            "monitors": ["192.0.2.1", "192.0.2.2"],
+            "image": "disk",
+            "fsType": "ext4",
+            "pool": "rbd",
+            "user": "admin",
+            "keyring": "/keyring",
+            "secretRef": {
+              "name": "credentials",
+              "namespace": "default"
+            },
+            "readOnly": true
+          }
+        },
+        {
+          "name": "volume-12",
+          "quobyte": {
+            "registry": "registry:7861",
+            "volume": "data",
+            "readOnly": true
+          }
+        },
+        {
+          "name": "volume-13",
+          "vsphereVolume": {
+            "volumePath": "[datastore] data.vmdk",
+            "fsType": "ext4",
+            "storagePolicyName": "fast"
+          }
+        },
+        {
+          "name": "volume-14",
+          "cinder": {
+            "volumeID": "disk",
+            "fsType": "ext4",
+            "readOnly": true,
+            "secretRef": {
+              "name": "credentials",
+              "namespace": "default"
+            }
+          }
+        },
+        {
+          "name": "volume-15",
+          "azureDisk": {
+            "diskName": "disk",
+            "diskURI": "https://example.org/disk",
+            "kind": "Managed",
+            "fsType": "ext4",
+            "cachingMode": "ReadOnly",
+            "readOnly": true
+          }
+        },
+        {
+          "name": "volume-16",
+          "photonPersistentDisk": {
+            "pdID": "disk",
+            "fsType": "ext4"
+          }
+        },
+        {
+          "name": "volume-17",
+          "portworxVolume": {
+            "volumeID": "disk"
+          }
+        },
+        {
+          "name": "volume-18",
+          "scaleIO": {
+            "gateway": "https://example.org",
+            "system": "system",
+            "protectionDomain": "domain",
+            "storagePool": "pool",
+            "storageMode": "ThinProvisioned",
+            "volumeName": "disk",
+            "secretRef": {
+              "name": "credentials",
+              "namespace": "default"
+            },
+            "fsType": "ext4",
+            "readOnly": true
+          }
+        },
+        {
+          "name": "volume-19",
+          "cephfs": {
+            "monitors": ["192.0.2.1"],
+            "path": "/data",
+            "user": "admin",
+            "secretFile": "/key",
+            "secretRef": {
+              "name": "credentials",
+              "namespace": "default"
+            },
+            "readOnly": true
+          }
+        },
+        {
+          "name": "volume-20",
+          "storageos": {
+            "volumeName": "disk",
+            "volumeNamespace": "storage",
+            "fsType": "ext4",
+            "readOnly": true
+          }
+        },
+        {
+          "name": "volume-21",
+          "fc": {
+            "targetWWNs": ["50060e801049cfd1", "50060e801049cfd2"],
+            "lun": 2,
+            "fsType": "ext4",
+            "readOnly": true
+          }
+        },
+        {
+          "name": "volume-22",
+          "azureFile": {
+            "secretName": "credentials",
+            "secretNamespace": "storage",
+            "shareName": "data",
+            "readOnly": true
+          }
+        },
+        {
+          "name": "volume-23",
+          "flexVolume": {
+            "driver": "example.org/driver",
+            "fsType": "ext4",
+            "secretRef": {
+              "name": "credentials",
+              "namespace": "default"
+            },
+            "readOnly": true,
+            "options": {
+              "z": "last",
+              "a": "first"
+            }
+          }
+        },
+        {
+          "name": "volume-24",
+          "flocker": {
+            "datasetName": "data",
+            "datasetUUID": "id"
+          }
+        },
+        {
+          "name": "volume-25",
+          "csi": {
+            "driver": "example.org/driver",
+            "fsType": "ext4",
+            "volumeHandle": "disk",
+            "readOnly": true,
+            "volumeAttributes": {
+              "z": "last",
+              "a": "first"
+            }
+          }
+        },
+        {
+          "name": "volume-26",
+          "image": {
+            "reference": "example.org/image:latest",
+            "pullPolicy": "Always"
+          }
+        },
+        {
+          "name": "volume-27",
+          "projected": {
+            "sources": [
+              {
+                "secret": {
+                  "name": "credentials",
+                  "optional": true
+                }
+              },
+              {
+                "configMap": {
+                  "name": "config",
+                  "optional": true
+                }
+              },
+              {
+                "downwardAPI": {
+                  "items": []
+                }
+              },
+              {
+                "serviceAccountToken": {
+                  "path": "token",
+                  "expirationSeconds": 3600
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "volume-28",
+          "downwardAPI": {
+            "items": [
+              {
+                "fieldRef": {
+                  "fieldPath": "metadata.name"
+                },
+                "path": "name"
+              },
+              {
+                "resourceFieldRef": {
+                  "resource": "limits.cpu",
+                  "containerName": "web"
+                },
+                "path": "cpu"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "status": {
+      "phase": "Pending"
+    }
+  },
+  "events": []
+}

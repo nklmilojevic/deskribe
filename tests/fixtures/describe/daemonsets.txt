@@ -1,0 +1,25 @@
+Name:           demo
+Namespace:      default
+Selector:       app=web
+Node-Selector:  <none>
+Labels:         app=web
+Annotations:    <none>
+Desired Number of Nodes Scheduled: 3
+Current Number of Nodes Scheduled: 3
+Number of Nodes Scheduled with Up-to-date Pods: 2
+Number of Nodes Scheduled with Available Pods: 2
+Number of Nodes Misscheduled: 0
+Pods Status:  2 Running / 1 Waiting / 1 Succeeded / 1 Failed
+Pod Template:
+  Labels:  app=web
+  Containers:
+   web:
+    Image:         example.invalid/web
+    Port:          <none>
+    Host Port:     <none>
+    Environment:   <none>
+    Mounts:        <none>
+  Volumes:         <none>
+  Node-Selectors:  <none>
+  Tolerations:     <none>
+Events:            <none>

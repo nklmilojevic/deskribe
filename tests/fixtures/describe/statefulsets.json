@@ -1,0 +1,212 @@
+{
+  "plural": "statefulsets",
+  "object": {
+    "apiVersion": "apps/v1",
+    "kind": "StatefulSet",
+    "metadata": {
+      "name": "demo",
+      "namespace": "default",
+      "uid": "demo-uid",
+      "creationTimestamp": "2026-01-01T00:00:00Z",
+      "labels": {
+        "app": "web"
+      }
+    },
+    "spec": {
+      "selector": {
+        "matchLabels": {
+          "app": "web"
+        }
+      },
+      "template": {
+        "metadata": {
+          "labels": {
+            "app": "web"
+          }
+        },
+        "spec": {
+          "containers": [
+            {
+              "name": "web",
+              "image": "example.invalid/web"
+            }
+          ],
+          "volumes": []
+        }
+      },
+      "replicas": 3,
+      "serviceName": "web",
+      "updateStrategy": {
+        "type": "RollingUpdate",
+        "rollingUpdate": {
+          "partition": 1,
+          "maxUnavailable": "25%"
+        }
+      },
+      "volumeClaimTemplates": [
+        {
+          "metadata": {
+            "name": "data",
+            "labels": {
+              "app": "web"
+            }
+          },
+          "spec": {
+            "storageClassName": "fast",
+            "accessModes": [
+              "ReadWriteOnce"
+            ],
+            "resources": {
+              "requests": {
+                "storage": "1Gi"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "status": {
+      "replicas": 2
+    }
+  },
+  "events": [],
+  "relatedPath": "/api/v1/namespaces/default/pods",
+  "relatedSelector": "app=web",
+  "related": [
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "pod-0",
+        "namespace": "default",
+        "uid": "pod-0",
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "StatefulSet",
+            "name": "demo",
+            "uid": "demo-uid",
+            "controller": true
+          }
+        ]
+      },
+      "spec": {
+        "containers": []
+      },
+      "status": {
+        "phase": "Running"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "pod-1",
+        "namespace": "default",
+        "uid": "pod-1",
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "StatefulSet",
+            "name": "demo",
+            "uid": "demo-uid",
+            "controller": true
+          }
+        ]
+      },
+      "spec": {
+        "containers": []
+      },
+      "status": {
+        "phase": "Running"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "pod-2",
+        "namespace": "default",
+        "uid": "pod-2",
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "StatefulSet",
+            "name": "demo",
+            "uid": "demo-uid",
+            "controller": true
+          }
+        ]
+      },
+      "spec": {
+        "containers": []
+      },
+      "status": {
+        "phase": "Pending"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "pod-3",
+        "namespace": "default",
+        "uid": "pod-3",
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "StatefulSet",
+            "name": "demo",
+            "uid": "demo-uid",
+            "controller": true
+          }
+        ]
+      },
+      "spec": {
+        "containers": []
+      },
+      "status": {
+        "phase": "Failed"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "pod-4",
+        "namespace": "default",
+        "uid": "pod-4",
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "StatefulSet",
+            "name": "demo",
+            "uid": "demo-uid",
+            "controller": true
+          }
+        ]
+      },
+      "spec": {
+        "containers": []
+      },
+      "status": {
+        "phase": "Succeeded"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "orphan",
+        "namespace": "default",
+        "uid": "orphan"
+      },
+      "spec": {
+        "containers": []
+      },
+      "status": {
+        "phase": "Running"
+      }
+    }
+  ]
+}

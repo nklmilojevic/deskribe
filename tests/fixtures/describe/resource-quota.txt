@@ -1,0 +1,9 @@
+Name:       demo
+Namespace:  default
+Scopes:     NotBestEffort
+ * Matches all pods that have at least one resource requirement set. These pods have a burstable or guaranteed quality of service.
+Resource  Used   Hard
+--------  ----   ----
+cpu       500m   2
+memory    512Mi  1Gi
+pods      3      10

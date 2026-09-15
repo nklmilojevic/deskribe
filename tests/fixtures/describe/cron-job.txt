@@ -1,0 +1,38 @@
+Name:                          demo
+Namespace:                     default
+Labels:                        <none>
+Annotations:                   <none>
+Schedule:                      */5 * * * *
+Concurrency Policy:            Forbid
+Suspend:                       False
+Time Zone:                     Etc/UTC
+Successful Job History Limit:  3
+Failed Job History Limit:      1
+Starting Deadline Seconds:     60s
+Selector:                      <unset>
+Parallelism:                   1
+Completions:                   1
+Pod Template:
+  Labels:           app=cron
+  Service Account:  runner
+  Containers:
+   worker:
+    Image:      example.invalid/worker
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      echo
+      hello
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:
+   scratch:
+    Type:               EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:             
+    SizeLimit:          <unset>
+  Priority Class Name:  batch
+  Node-Selectors:       <none>
+  Tolerations:          <none>
+Last Schedule Time:     Thu, 01 Jan 2026 00:00:00 +0000
+Active Jobs:            demo-1, demo-2
+Events:                 <none>

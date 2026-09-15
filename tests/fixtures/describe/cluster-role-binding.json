@@ -1,0 +1,25 @@
+{
+  "plural": "clusterrolebindings",
+  "object": {
+    "apiVersion": "rbac.authorization.k8s.io/v1",
+    "kind": "ClusterRoleBinding",
+    "metadata": {
+      "name": "demo",
+      "uid": "demo-uid",
+      "creationTimestamp": "2026-01-01T00:00:00Z"
+    },
+    "roleRef": {
+      "apiGroup": "rbac.authorization.k8s.io",
+      "kind": "ClusterRole",
+      "name": "view"
+    },
+    "subjects": [
+      {
+        "kind": "Group",
+        "name": "readers",
+        "apiGroup": "rbac.authorization.k8s.io"
+      }
+    ]
+  },
+  "events": []
+}

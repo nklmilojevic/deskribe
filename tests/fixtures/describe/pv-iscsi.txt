@@ -1,0 +1,30 @@
+Name:              demo
+Labels:            <none>
+Annotations:       <none>
+Finalizers:        [kubernetes.io/pv-protection]
+StorageClass:      fast
+Status:            Bound
+Claim:             default/claim
+Reclaim Policy:    Retain
+Access Modes:      RWO
+VolumeMode:        Filesystem
+Capacity:          1Gi
+Node Affinity:     
+  Required Terms:  
+    Term 0:        topology.kubernetes.io/zone in [zone-a, zone-b]
+                   disk exists
+Message:           
+Source:
+    Type:               ISCSI (an ISCSI Disk resource that is attached to a kubelet's host machine and then exposed to the pod)
+    TargetPortal:       192.0.2.1:3260
+    IQN:                iqn.2026-01.org.example:test
+    Lun:                2
+    ISCSIInterface      default
+    FSType:             ext4
+    ReadOnly:           true
+    Portals:            [192.0.2.2:3260]
+    DiscoveryCHAPAuth:  true
+    SessionCHAPAuth:    true
+    SecretRef:          &SecretReference{Name:credentials,Namespace:default,}
+    InitiatorName:      iqn.2026-01.org.example:client
+Events:                 <none>

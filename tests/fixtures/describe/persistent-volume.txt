@@ -1,0 +1,25 @@
+Name:              demo
+Labels:            <none>
+Annotations:       <none>
+Finalizers:        [kubernetes.io/pv-protection]
+StorageClass:      fast
+Status:            Bound
+Claim:             default/claim
+Reclaim Policy:    Retain
+Access Modes:      RWO
+VolumeMode:        Filesystem
+Capacity:          1Gi
+Node Affinity:     
+  Required Terms:  
+    Term 0:        topology.kubernetes.io/zone in [zone-a, zone-b]
+                   disk exists
+Message:           
+Source:
+    Type:              CSI (a Container Storage Interface (CSI) volume source)
+    Driver:            csi.example.org
+    FSType:            ext4
+    VolumeHandle:      disk-123
+    ReadOnly:          false
+    VolumeAttributes:      replicas=2
+                           zone=zone-a
+Events:                <none>

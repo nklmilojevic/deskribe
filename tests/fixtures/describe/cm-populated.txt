@@ -1,0 +1,27 @@
+Name:         demo
+Namespace:    default
+Labels:       app=demo
+              z=last
+Annotations:  long:
+                ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé...
+              multiline:
+                one
+                two
+
+Data
+====
+hello:
+----
+world
+second  column\r^[
+
+z:
+----
+last
+
+
+BinaryData
+====
+bytes: 3 bytes
+
+Events:  <none>

@@ -1,0 +1,27 @@
+Name:              demo
+Labels:            <none>
+Annotations:       <none>
+Finalizers:        [kubernetes.io/pv-protection]
+StorageClass:      fast
+Status:            Bound
+Claim:             default/claim
+Reclaim Policy:    Retain
+Access Modes:      RWO
+VolumeMode:        Filesystem
+Capacity:          1Gi
+Node Affinity:     
+  Required Terms:  
+    Term 0:        topology.kubernetes.io/zone in [zone-a, zone-b]
+                   disk exists
+Message:           
+Source:
+    Type:          RBD (a Rados Block Device mount on the host that shares a pod's lifetime)
+    CephMonitors:  [192.0.2.1 192.0.2.2]
+    RBDImage:      disk
+    FSType:        ext4
+    RBDPool:       rbd
+    RadosUser:     admin
+    Keyring:       /keyring
+    SecretRef:     &SecretReference{Name:credentials,Namespace:default,}
+    ReadOnly:      true
+Events:            <none>

@@ -1,0 +1,25 @@
+{
+  "plural": "csinodes",
+  "object": {
+    "apiVersion": "storage.k8s.io/v1",
+    "kind": "CSINode",
+    "metadata": {
+      "name": "demo",
+      "uid": "demo-uid",
+      "creationTimestamp": "2026-01-01T00:00:00Z"
+    },
+    "spec": {
+      "drivers": [
+        {
+          "name": "example.com/csi",
+          "nodeID": "synthetic-node",
+          "allocatable": {
+            "count": 16
+          },
+          "topologyKeys": ["zone", "rack"]
+        }
+      ]
+    }
+  },
+  "events": []
+}

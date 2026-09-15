@@ -1,0 +1,35 @@
+{
+  "plural": "limitranges",
+  "object": {
+    "apiVersion": "v1",
+    "kind": "LimitRange",
+    "metadata": {
+      "name": "demo",
+      "namespace": "default",
+      "uid": "demo-uid"
+    },
+    "spec": {
+      "limits": [
+        {
+          "type": "Container",
+          "min": {
+            "cpu": "100m"
+          },
+          "max": {
+            "cpu": "2"
+          },
+          "default": {
+            "cpu": "1"
+          },
+          "defaultRequest": {
+            "cpu": "500m"
+          },
+          "maxLimitRequestRatio": {
+            "cpu": "4"
+          }
+        }
+      ]
+    }
+  },
+  "events": []
+}

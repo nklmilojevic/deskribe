@@ -1,0 +1,98 @@
+{
+  "plural": "persistentvolumeclaims",
+  "object": {
+    "apiVersion": "v1",
+    "kind": "PersistentVolumeClaim",
+    "metadata": {
+      "name": "demo",
+      "namespace": "default",
+      "uid": "demo-uid",
+      "labels": {
+        "app": "web"
+      },
+      "finalizers": [
+        "kubernetes.io/pvc-protection"
+      ],
+      "ownerReferences": [
+        {
+          "apiVersion": "v1",
+          "kind": "Pod",
+          "name": "owner",
+          "uid": "owner-uid"
+        }
+      ]
+    },
+    "spec": {
+      "storageClassName": "fast",
+      "volumeName": "pv-demo",
+      "volumeMode": "Filesystem",
+      "dataSource": {
+        "apiGroup": "snapshot.storage.k8s.io",
+        "kind": "VolumeSnapshot",
+        "name": "backup"
+      }
+    },
+    "status": {
+      "phase": "Bound",
+      "capacity": {
+        "storage": "1Gi"
+      },
+      "accessModes": [
+        "ReadWriteMany",
+        "ReadWriteOnce"
+      ],
+      "conditions": [
+        {
+          "type": "Resizing",
+          "status": "True",
+          "lastProbeTime": "2026-01-01T00:00:00Z",
+          "lastTransitionTime": "2026-01-01T00:00:00Z",
+          "reason": "ExpansionRequested",
+          "message": "Expansion is pending"
+        }
+      ]
+    }
+  },
+  "events": [],
+  "relatedPath": "/api/v1/namespaces/default/pods",
+  "relatedSelector": "",
+  "related": [
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "consumer",
+        "namespace": "default",
+        "uid": "consumer-uid"
+      },
+      "spec": {
+        "volumes": [
+          {
+            "name": "data",
+            "persistentVolumeClaim": {
+              "claimName": "demo"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "owner",
+        "namespace": "default",
+        "uid": "owner-uid"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "unrelated",
+        "namespace": "default",
+        "uid": "unrelated-uid"
+      }
+    }
+  ]
+}

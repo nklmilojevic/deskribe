@@ -1,0 +1,21 @@
+{
+  "plural": "ipaddresses",
+  "object": {
+    "apiVersion": "networking.k8s.io/v1",
+    "kind": "IPAddress",
+    "metadata": {
+      "name": "demo",
+      "uid": "demo-uid",
+      "creationTimestamp": "2026-01-01T00:00:00Z"
+    },
+    "spec": {
+      "parentRef": {
+        "group": "",
+        "resource": "services",
+        "namespace": "default",
+        "name": "service"
+      }
+    }
+  },
+  "events": []
+}

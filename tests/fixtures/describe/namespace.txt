@@ -1,0 +1,23 @@
+Name:         demo
+Labels:       <none>
+Annotations:  <none>
+Status:       Active
+Conditions:
+  Type                       Status  LastTransitionTime               Reason          Message
+  ----                       ------  ------------------               ------          -------
+  NamespaceContentRemaining  False   Thu, 01 Jan 2026 00:00:00 +0000  ContentRemoved  No remaining content
+
+Resource Quotas
+  Name:    demo
+  Scopes:  NotBestEffort
+  * Matches all pods that have at least one resource requirement set. These pods have a burstable or guaranteed quality of service.
+  Resource  Used       Hard
+  --------  ---        ---
+  cpu       500m       2
+  memory    536870912  1Gi
+  pods      3          10
+
+Resource Limits
+ Type       Resource  Min   Max  Default Request  Default Limit  Max Limit/Request Ratio
+ ----       --------  ---   ---  ---------------  -------------  -----------------------
+ Container  cpu       100m  2    500m             1              4

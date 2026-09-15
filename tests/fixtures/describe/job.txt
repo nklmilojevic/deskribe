@@ -1,0 +1,33 @@
+Name:                        demo
+Namespace:                   default
+Selector:                    job-name=demo
+Labels:                      app=batch
+Annotations:                 <none>
+Parallelism:                 2
+Completions:                 5
+Completion Mode:             Indexed
+Suspend:                     false
+Backoff Limit:               6
+TTL Seconds After Finished:  60
+Start Time:                  Thu, 01 Jan 2026 00:00:00 +0000
+Completed At:                Thu, 01 Jan 2026 00:00:00 +0000
+Duration:                    0s
+Active Deadline Seconds:     300s
+Pods Statuses:               0 Active (0 Ready) / 5 Succeeded / 1 Failed
+Completed Indexes:           0-4
+Pod Template:
+  Labels:       app=batch
+                job-name=demo
+  Annotations:  test: yes
+  Containers:
+   worker:
+    Image:      example.invalid/worker
+    Port:       <none>
+    Host Port:  <none>
+    Environment:
+      POD_NAME:     (v1:metadata.name)
+    Mounts:        <none>
+  Volumes:         <none>
+  Node-Selectors:  zone=west
+  Tolerations:     op=Exists
+Events:            <none>

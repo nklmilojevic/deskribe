@@ -1,0 +1,17 @@
+Name:             demo
+Labels:           app=web
+Namespace:        default
+Address:          192.0.2.1,192.0.2.2,proxy.example.org
+Ingress Class:    nginx
+Default backend:  api:80 (10.0.0.1:8080,10.0.0.2:8080,10.0.0.4:8080 + 1 more...)
+TLS:
+  tls terminates example.org
+  SNI routes sni.example.org
+Rules:
+  Host         Path  Backends
+  ----         ----  --------
+  example.org  
+               /         api:80 (10.0.0.1:8080,10.0.0.2:8080,10.0.0.4:8080 + 1 more...)
+               /assets   APIGroup: example.org, Kind: Bucket, Name: assets
+Annotations:   example.org/note: fixture
+Events:        <none>

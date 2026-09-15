@@ -1,0 +1,150 @@
+{
+  "plural": "deployments",
+  "object": {
+    "apiVersion": "apps/v1",
+    "kind": "Deployment",
+    "metadata": {
+      "name": "demo",
+      "namespace": "default",
+      "uid": "demo-uid",
+      "creationTimestamp": "2026-01-01T00:00:00Z",
+      "labels": {
+        "app": "web"
+      }
+    },
+    "spec": {
+      "selector": {
+        "matchLabels": {
+          "app": "web"
+        }
+      },
+      "template": {
+        "metadata": {
+          "labels": {
+            "app": "web"
+          }
+        },
+        "spec": {
+          "containers": [
+            {
+              "name": "web",
+              "image": "example.invalid/web"
+            }
+          ],
+          "volumes": []
+        }
+      },
+      "replicas": 3,
+      "strategy": {
+        "type": "RollingUpdate",
+        "rollingUpdate": {
+          "maxSurge": "25%",
+          "maxUnavailable": 1
+        }
+      },
+      "minReadySeconds": 10
+    },
+    "status": {
+      "replicas": 2,
+      "updatedReplicas": 2,
+      "availableReplicas": 1,
+      "unavailableReplicas": 2,
+      "conditions": [
+        {
+          "type": "Available",
+          "status": "True",
+          "reason": "Ready"
+        }
+      ]
+    }
+  },
+  "events": [],
+  "relatedPath": "/apis/apps/v1/namespaces/default/replicasets",
+  "relatedSelector": "app=web",
+  "related": [
+    {
+      "apiVersion": "apps/v1",
+      "kind": "ReplicaSet",
+      "metadata": {
+        "name": "old",
+        "namespace": "default",
+        "uid": "old-uid",
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "name": "demo",
+            "uid": "demo-uid",
+            "controller": true
+          }
+        ],
+        "creationTimestamp": "2026-01-01T00:00:00Z"
+      },
+      "spec": {
+        "replicas": 1,
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "web",
+              "pod-template-hash": "old"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "name": "web",
+                "image": "example.invalid/old"
+              }
+            ],
+            "volumes": []
+          }
+        }
+      },
+      "status": {
+        "replicas": 1
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "ReplicaSet",
+      "metadata": {
+        "name": "new",
+        "namespace": "default",
+        "uid": "new-uid",
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "name": "demo",
+            "uid": "demo-uid",
+            "controller": true
+          }
+        ],
+        "creationTimestamp": "2026-01-01T00:00:00Z"
+      },
+      "spec": {
+        "replicas": 2,
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "web",
+              "pod-template-hash": "new"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "name": "web",
+                "image": "example.invalid/web"
+              }
+            ],
+            "volumes": []
+          }
+        }
+      },
+      "status": {
+        "replicas": 2
+      }
+    }
+  ]
+}

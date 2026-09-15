@@ -1,0 +1,184 @@
+Name:         demo
+Namespace:    default
+Node:         <none>
+Labels:       <none>
+Annotations:  <none>
+Status:       Pending
+IP:           
+IPs:          <none>
+Containers: <none>
+Volumes:
+  volume-0:
+    Type:          HostPath (bare host directory volume)
+    Path:          /data
+    HostPathType:  Directory
+  volume-1:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     Memory
+    SizeLimit:  1Gi
+  volume-2:
+    Type:       GCEPersistentDisk (a Persistent Disk resource in Google Compute Engine)
+    PDName:     disk
+    FSType:     ext4
+    Partition:  1
+    ReadOnly:   true
+  volume-3:
+    Type:       AWSElasticBlockStore (a Persistent Disk resource in AWS)
+    VolumeID:   vol-1
+    FSType:     ext4
+    Partition:  2
+    ReadOnly:   false
+  volume-4:
+    Type:        GitRepo (a volume that is pulled from git when the pod is created)
+    Repository:  https://example.org/repo.git
+    Revision:    main
+  volume-5:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  credentials
+    Optional:    true
+  volume-6:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      config
+    Optional:  true
+  volume-7:
+    Type:      NFS (an NFS mount that lasts the lifetime of a pod)
+    Server:    192.0.2.1
+    Path:      /data
+    ReadOnly:  true
+  volume-8:
+    Type:               ISCSI (an ISCSI Disk resource that is attached to a kubelet's host machine and then exposed to the pod)
+    TargetPortal:       192.0.2.1:3260
+    IQN:                iqn.2026-01.org.example:test
+    Lun:                2
+    ISCSIInterface      default
+    FSType:             ext4
+    ReadOnly:           true
+    Portals:            [192.0.2.2:3260]
+    DiscoveryCHAPAuth:  true
+    SessionCHAPAuth:    true
+    SecretRef:          &LocalObjectReference{Name:credentials,}
+    InitiatorName:      iqn.2026-01.org.example:client
+  volume-9:
+    Type:           Glusterfs (a Glusterfs mount on the host that shares a pod's lifetime)
+    EndpointsName:  gluster
+    Path:           data
+    ReadOnly:       true
+  volume-10:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  data
+    ReadOnly:   true
+  volume-11:
+    Type:          RBD (a Rados Block Device mount on the host that shares a pod's lifetime)
+    CephMonitors:  [192.0.2.1 192.0.2.2]
+    RBDImage:      disk
+    FSType:        ext4
+    RBDPool:       rbd
+    RadosUser:     admin
+    Keyring:       /keyring
+    SecretRef:     &LocalObjectReference{Name:credentials,}
+    ReadOnly:      true
+  volume-12:
+    Type:      Quobyte (a Quobyte mount on the host that shares a pod's lifetime)
+    Registry:  registry:7861
+    Volume:    data
+    ReadOnly:  true
+  volume-13:
+    Type:               vSphereVolume (a Persistent Disk resource in vSphere)
+    VolumePath:         [datastore] data.vmdk
+    FSType:             ext4
+    StoragePolicyName:  fast
+  volume-14:
+    Type:       Cinder (a Persistent Disk resource in OpenStack)
+    VolumeID:   disk
+    FSType:     ext4
+    ReadOnly:   true
+    SecretRef:  &LocalObjectReference{Name:credentials,}
+  volume-15:
+    Type:         AzureDisk (an Azure Data Disk mount on the host and bind mount to the pod)
+    DiskName:     disk
+    DiskURI:      https://example.org/disk
+    Kind:         Managed
+    FSType:       ext4
+    CachingMode:  ReadOnly
+    ReadOnly:     true
+  volume-16:
+    Type:    PhotonPersistentDisk (a Persistent Disk resource in photon platform)
+    PdID:    disk
+    FSType:  ext4
+  volume-17:
+    Type:      PortworxVolume (a Portworx Volume resource)
+    VolumeID:  disk
+  volume-18:
+    Type:               ScaleIO (a persistent volume backed by a block device in ScaleIO)
+    Gateway:            https://example.org
+    System:             system
+    Protection Domain:  domain
+    Storage Pool:       pool
+    Storage Mode:       ThinProvisioned
+    VolumeName:         disk
+    FSType:             ext4
+    ReadOnly:           true
+  volume-19:
+    Type:        CephFS (a CephFS mount on the host that shares a pod's lifetime)
+    Monitors:    [192.0.2.1]
+    Path:        /data
+    User:        admin
+    SecretFile:  /key
+    SecretRef:   &LocalObjectReference{Name:credentials,}
+    ReadOnly:    true
+  volume-20:
+    Type:             StorageOS (a StorageOS Persistent Disk resource)
+    VolumeName:       disk
+    VolumeNamespace:  storage
+    FSType:           ext4
+    ReadOnly:         true
+  volume-21:
+    Type:        FC (a Fibre Channel disk)
+    TargetWWNs:  50060e801049cfd1, 50060e801049cfd2
+    LUN:         2
+    FSType:      ext4
+    ReadOnly:    true
+  volume-22:
+    Type:        AzureFile (an Azure File Service mount on the host and bind mount to the pod)
+    SecretName:  credentials
+    ShareName:   data
+    ReadOnly:    true
+  volume-23:
+    Type:       FlexVolume (a generic volume resource that is provisioned/attached using an exec based plugin)
+    Driver:     example.org/driver
+    FSType:     ext4
+    SecretRef:  &LocalObjectReference{Name:credentials,}
+    ReadOnly:   true
+    Options:    map[a:first z:last]
+  volume-24:
+    Type:         Flocker (a Flocker volume mounted by the Flocker agent)
+    DatasetName:  data
+    DatasetUUID:  id
+  volume-25:
+    Type:              CSI (a Container Storage Interface (CSI) volume source)
+    Driver:            example.org/driver
+    FSType:            ext4
+    ReadOnly:          true
+    VolumeAttributes:      a=first
+                           z=last
+  volume-26:
+    Type:        Image (a container image or OCI artifact)
+    Reference:   example.org/image:latest
+    PullPolicy:  Always
+  volume-27:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    SecretName:              credentials
+    Optional:                true
+    ConfigMapName:           config
+    Optional:                true
+    DownwardAPI:             true
+    TokenExpirationSeconds:  3600
+  volume-28:
+    Type:  DownwardAPI (a volume populated by information about the pod)
+    Items:
+      metadata.name -> name
+      limits.cpu -> cpu
+QoS Class:       BestEffort
+Node-Selectors:  <none>
+Tolerations:     <none>
+Events:          <none>

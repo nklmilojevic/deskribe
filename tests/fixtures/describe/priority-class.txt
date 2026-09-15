@@ -1,0 +1,7 @@
+Name:              demo
+Value:             1000
+GlobalDefault:     false
+PreemptionPolicy:  PreemptLowerPriority
+Description:       Synthetic priority class
+Annotations:       <none>
+Events:            <none>

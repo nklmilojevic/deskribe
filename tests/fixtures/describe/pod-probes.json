@@ -1,0 +1,252 @@
+{
+  "plural": "pods",
+  "object": {
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+      "name": "demo",
+      "namespace": "default",
+      "uid": "demo-uid",
+      "creationTimestamp": "2026-01-01T00:00:00Z"
+    },
+    "spec": {
+      "priority": 100,
+      "priorityClassName": "important",
+      "serviceAccountName": "default",
+      "nodeName": "worker",
+      "containers": [
+        {
+          "name": "web",
+          "image": "example.invalid/web:v1",
+          "ports": [
+            {
+              "containerPort": 8080,
+              "hostPort": 0,
+              "protocol": "TCP",
+              "name": "http"
+            },
+            {
+              "containerPort": 9090,
+              "protocol": "TCP"
+            }
+          ],
+          "command": ["sh", "-c"],
+          "args": ["echo hello\necho world"],
+          "resources": {
+            "requests": {
+              "cpu": "0.5",
+              "memory": "128Mi"
+            },
+            "limits": {
+              "cpu": "1",
+              "memory": "256Mi"
+            }
+          },
+          "env": [
+            {
+              "name": "PLAIN",
+              "value": "hello\nworld"
+            },
+            {
+              "name": "POD_NAME",
+              "valueFrom": {
+                "fieldRef": {
+                  "apiVersion": "v1",
+                  "fieldPath": "metadata.name"
+                }
+              }
+            },
+            {
+              "name": "CPU",
+              "valueFrom": {
+                "resourceFieldRef": {
+                  "resource": "requests.cpu",
+                  "divisor": "1m"
+                }
+              }
+            },
+            {
+              "name": "PASSWORD",
+              "valueFrom": {
+                "secretKeyRef": {
+                  "name": "credentials",
+                  "key": "password"
+                }
+              }
+            },
+            {
+              "name": "SETTINGS",
+              "valueFrom": {
+                "configMapKeyRef": {
+                  "name": "settings",
+                  "key": "config",
+                  "optional": true
+                }
+              }
+            }
+          ],
+          "envFrom": [
+            {
+              "prefix": "APP_",
+              "configMapRef": {
+                "name": "settings"
+              }
+            },
+            {
+              "secretRef": {
+                "name": "credentials",
+                "optional": true
+              }
+            }
+          ],
+          "readinessProbe": {
+            "tcpSocket": {
+              "host": "2001:db8::2",
+              "port": "http"
+            },
+            "timeoutSeconds": 2,
+            "periodSeconds": 10,
+            "successThreshold": 1,
+            "failureThreshold": 3
+          },
+          "volumeMounts": [
+            {
+              "name": "config",
+              "mountPath": "/etc/config",
+              "readOnly": true
+            },
+            {
+              "name": "work",
+              "mountPath": "/work",
+              "subPath": "data"
+            }
+          ],
+          "livenessProbe": {
+            "httpGet": {
+              "scheme": "HTTPS",
+              "host": "2001:db8::1",
+              "port": 8443,
+              "path": "/health?q=two words#fragment"
+            },
+            "initialDelaySeconds": 3,
+            "timeoutSeconds": 2,
+            "periodSeconds": 10,
+            "successThreshold": 1,
+            "failureThreshold": 3
+          },
+          "startupProbe": {
+            "grpc": {
+              "port": 9090,
+              "service": "health"
+            },
+            "timeoutSeconds": 2,
+            "periodSeconds": 10,
+            "successThreshold": 1,
+            "failureThreshold": 30
+          }
+        }
+      ],
+      "initContainers": [
+        {
+          "name": "init",
+          "image": "example.invalid/init:v1",
+          "resources": {}
+        }
+      ],
+      "securityContext": {
+        "seccompProfile": {
+          "type": "RuntimeDefault"
+        }
+      },
+      "nodeSelector": {
+        "zone": "west",
+        "disk": "ssd"
+      },
+      "tolerations": [
+        {
+          "key": "maintenance",
+          "operator": "Exists",
+          "effect": "NoExecute",
+          "tolerationSeconds": 30
+        },
+        {
+          "operator": "Exists"
+        }
+      ],
+      "topologySpreadConstraints": [
+        {
+          "topologyKey": "zone",
+          "maxSkew": 1,
+          "whenUnsatisfiable": "DoNotSchedule",
+          "labelSelector": {
+            "matchLabels": {
+              "app": "web"
+            }
+          }
+        }
+      ],
+      "readinessGates": [
+        {
+          "conditionType": "CustomReady"
+        }
+      ],
+      "volumes": [
+        {
+          "name": "config",
+          "configMap": {
+            "name": "settings"
+          }
+        },
+        {
+          "name": "work",
+          "emptyDir": {
+            "sizeLimit": "1Gi"
+          }
+        }
+      ]
+    },
+    "status": {
+      "phase": "Running",
+      "podIP": "10.0.0.1",
+      "podIPs": [
+        {
+          "ip": "10.0.0.1"
+        },
+        {
+          "ip": "fd00::1"
+        }
+      ],
+      "hostIP": "10.0.1.1",
+      "startTime": "2026-01-01T00:00:00Z",
+      "conditions": [
+        {
+          "type": "Ready",
+          "status": "True"
+        }
+      ],
+      "containerStatuses": [
+        {
+          "name": "web",
+          "containerID": "containerd://abc",
+          "imageID": "sha256:abc",
+          "ready": true,
+          "restartCount": 1,
+          "state": {
+            "running": {
+              "startedAt": "2026-01-01T00:00:00Z"
+            }
+          },
+          "lastState": {
+            "terminated": {
+              "reason": "Error",
+              "exitCode": 1,
+              "startedAt": "2026-01-01T00:00:00Z",
+              "finishedAt": "2026-01-01T00:00:00Z"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "events": []
+}

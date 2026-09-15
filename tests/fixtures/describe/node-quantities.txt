@@ -1,0 +1,65 @@
+Name:               demo
+Roles:              control-plane,worker
+Labels:             kubernetes.io/role=worker
+                    node-role.kubernetes.io/control-plane=
+Annotations:        <none>
+CreationTimestamp:  Thu, 01 Jan 2026 00:00:00 +0000
+Taints:             unreachable:NoExecute
+                    dedicated=test:NoSchedule
+Unschedulable:      false
+Lease:
+  HolderIdentity:  demo
+  AcquireTime:     <unset>
+  RenewTime:       Thu, 01 Jan 2026 00:00:00 +0000
+Conditions:
+  Type    Status  LastHeartbeatTime                 LastTransitionTime                Reason         Message
+  ----    ------  -----------------                 ------------------                ------         -------
+  Ready   True    Thu, 01 Jan 2026 00:00:00 +0000   Thu, 01 Jan 2026 00:00:00 +0000   KubeletReady   Ready
+Addresses:
+  InternalIP:  192.0.2.1
+Capacity:
+  cpu:                8
+  ephemeral-storage:  100Gi
+  example.org/gpu:    4
+  hugepages-2Mi:      1Gi
+  memory:             16Gi
+  pods:               100
+Allocatable:
+  cpu:                4
+  ephemeral-storage:  80Gi
+  example.org/gpu:    4
+  hugepages-2Mi:      1Gi
+  memory:             8Gi
+  pods:               90
+System Info:
+  Machine ID:                 machine
+  System UUID:                system
+  Boot ID:                    boot
+  Kernel Version:             6.1
+  OS Image:                   Test Linux
+  Operating System:           linux
+  Architecture:               amd64
+  Container Runtime Version:  containerd://2.0
+  Kubelet Version:            v1.35.1
+PodCIDR:                      10.0.0.0/24
+PodCIDRs:                     10.0.0.0/24,fd00::/64
+ProviderID:                   test://node/demo
+Non-terminated Pods:          (6 in total)
+  Namespace                   Name          CPU Requests  CPU Limits  Memory Requests  Memory Limits  Age
+  ---------                   ----          ------------  ----------  ---------------  -------------  ---
+  default                     quantity-0    0 (0%)        0 (0%)      1k (0%)          1k (0%)        <unknown>
+  default                     quantity-1    0 (0%)        0 (0%)      100m (0%)        100m (0%)      <unknown>
+  default                     quantity-2    0 (0%)        0 (0%)      1e3 (0%)         1e3 (0%)       <unknown>
+  default                     quantity-3    0 (0%)        0 (0%)      1500m (0%)       1500m (0%)     <unknown>
+  default                     quantity-4    0 (0%)        0 (0%)      1025 (0%)        1025 (0%)      <unknown>
+  default                     quantity-5    0 (0%)        0 (0%)      1536Mi (18%)     1536Mi (18%)   <unknown>
+Allocated resources:
+  (Total limits may be over 100 percent, i.e., overcommitted.)
+  Resource           Requests              Limits
+  --------           --------              ------
+  cpu                0 (0%)                0 (0%)
+  memory             1610615762600m (18%)  1610615762600m (18%)
+  ephemeral-storage  0 (0%)                0 (0%)
+  hugepages-2Mi      0 (0%)                0 (0%)
+  example.org/gpu    0                     0
+Events:              <none>

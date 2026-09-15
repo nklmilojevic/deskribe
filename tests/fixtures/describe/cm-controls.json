@@ -1,0 +1,16 @@
+{
+  "object": {
+    "apiVersion": "v1",
+    "kind": "ConfigMap",
+    "metadata": {
+      "name": "demo",
+      "namespace": "default",
+      "uid": "demo-uid"
+    },
+    "data": {
+      "tabs": "\ta\tb\nc\td\n\t\ne\u000bf\u000b\n\n\fform\ffeed\n\f\ntrailing\t",
+      "unicode": "\u4e16\t\u00e9\n\tend"
+    }
+  },
+  "events": []
+}

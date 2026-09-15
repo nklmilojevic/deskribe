@@ -1,0 +1,96 @@
+Name:         demo
+Namespace:    default
+Node:         <none>
+Labels:       <none>
+Annotations:  <none>
+Status:       Pending
+IP:           
+IPs:          <none>
+Containers:
+  app:
+    Image:        example.invalid/app
+    Port:         <none>
+    Host Port:    <none>
+    Environment:  <none>
+    Mounts:       <none>
+Volumes:
+  host:
+    Type:          HostPath (bare host directory volume)
+    Path:          /var/test
+    HostPathType:  Directory
+  secret:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  synthetic
+    Optional:    true
+  nfs:
+    Type:      NFS (an NFS mount that lasts the lifetime of a pod)
+    Server:    example.invalid
+    Path:      /share
+    ReadOnly:  true
+  claim:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  data
+    ReadOnly:   false
+  ephemeral:
+    Type:          EphemeralVolume (an inline specification for a volume that gets created and deleted with the pod)
+    StorageClass:  fast
+    Volume:        
+    Labels:            app=test
+    Annotations:       <none>
+    Capacity:      
+    Access Modes:  
+    VolumeMode:    Filesystem
+  projected:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    SecretName:              secret
+    Optional:                false
+    DownwardAPI:             true
+    ConfigMapName:           settings
+    Optional:                true
+    TokenExpirationSeconds:  3600
+  downward:
+    Type:  DownwardAPI (a volume populated by information about the pod)
+    Items:
+      metadata.labels -> labels
+      limits.memory -> memory
+  csi:
+    Type:              CSI (a Container Storage Interface (CSI) volume source)
+    Driver:            example.com/csi
+    FSType:            
+    ReadOnly:          false
+    VolumeAttributes:      tier=fast
+                           zone=west
+  image:
+    Type:        Image (a container image or OCI artifact)
+    Reference:   example.invalid/image
+    PullPolicy:  IfNotPresent
+  iscsi:
+    Type:               ISCSI (an ISCSI Disk resource that is attached to a kubelet's host machine and then exposed to the pod)
+    TargetPortal:       example.invalid:3260
+    IQN:                test
+    Lun:                1
+    ISCSIInterface      
+    FSType:             
+    ReadOnly:           false
+    Portals:            []
+    DiscoveryCHAPAuth:  false
+    SessionCHAPAuth:    false
+    SecretRef:          &LocalObjectReference{Name:auth,}
+    InitiatorName:      <none>
+  fc:
+    Type:        FC (a Fibre Channel disk)
+    TargetWWNs:  one, two
+    LUN:         1
+    FSType:      ext4
+    ReadOnly:    false
+  flex:
+    Type:        FlexVolume (a generic volume resource that is provisioned/attached using an exec based plugin)
+    Driver:      example.com/driver
+    FSType:      
+    SecretRef:   nil
+    ReadOnly:    false
+    Options:     map[mode:test]
+QoS Class:       BestEffort
+Node-Selectors:  <none>
+Tolerations:     <none>
+Events:          <none>

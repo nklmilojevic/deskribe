@@ -1,0 +1,72 @@
+{
+  "object": {
+    "apiVersion": "v1",
+    "kind": "ConfigMap",
+    "metadata": {
+      "name": "demo",
+      "namespace": "default",
+      "uid": "demo-uid",
+      "labels": {
+        "z": "last",
+        "app": "demo"
+      },
+      "annotations": {
+        "multiline": "one\ntwo\n",
+        "long": "\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9",
+        "kubectl.kubernetes.io/last-applied-configuration": "MUST NOT SHOW"
+      }
+    },
+    "data": {
+      "z": "last",
+      "hello": "world\nsecond\tcolumn\r\u001b"
+    },
+    "binaryData": {
+      "bytes": "AAH/"
+    }
+  },
+  "events": [
+    {
+      "apiVersion": "v1",
+      "kind": "Event",
+      "metadata": {
+        "name": "event"
+      },
+      "involvedObject": {
+        "kind": "ConfigMap",
+        "name": "demo",
+        "namespace": "default",
+        "uid": "demo-uid",
+        "fieldPath": "data.hello"
+      },
+      "type": "Normal",
+      "reason": "Updated",
+      "message": "  applied\r\u001b  ",
+      "count": 2,
+      "source": {
+        "component": "controller"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Event",
+      "metadata": {
+        "name": "series"
+      },
+      "involvedObject": {
+        "kind": "ConfigMap",
+        "name": "demo",
+        "namespace": "default",
+        "uid": "demo-uid"
+      },
+      "type": "Warning",
+      "reason": "Retried",
+      "message": "retry",
+      "reportingComponent": "fallback-controller",
+      "series": {
+        "count": 3,
+        "lastObservedTime": "2999-01-01T00:00:00.000000Z"
+      },
+      "eventTime": "2999-01-01T00:00:00.000000Z"
+    }
+  ]
+}

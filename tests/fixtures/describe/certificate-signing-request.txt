@@ -1,0 +1,25 @@
+Name:                demo
+Labels:              app=web
+Annotations:         <none>
+CreationTimestamp:   Thu, 01 Jan 2026 00:00:00 +0000
+Requesting User:     test-user
+Signer:              example.org/test
+Requested Duration:  25h
+Status:              Approved,Issued
+Subject:
+  Common Name:          example.org
+  Serial Number:        123
+  Organization:         Example
+                        Second
+  Organizational Unit:  Tests
+  Country:              US
+  Locality:             Test
+  Province:             California
+Subject Alternative Names:
+         DNS Names:        example.org
+                           alt.example.org
+         Email Addresses:  test@example.org
+         URIs:             spiffe://example.org/test
+         IP Addresses:     192.0.2.1
+                           2001:db8::1
+Events:  <none>
