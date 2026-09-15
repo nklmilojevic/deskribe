@@ -17,15 +17,25 @@ pub(super) fn supports(ar: &ApiResource) -> bool {
     matches!(ar.group.as_str(), "networking.k8s.io" | "extensions") && ar.kind == "Ingress"
 }
 
+fn default_backend(spec: &Value) -> &Value {
+    spec.get("defaultBackend").unwrap_or(&spec["backend"])
+}
+
+fn service_name(backend: &Value) -> Option<&str> {
+    backend["service"]["name"]
+        .as_str()
+        .or_else(|| backend["serviceName"].as_str())
+}
+
 pub(super) async fn related(client: Client, object: &DynamicObject) -> Backends {
     let mut names = std::collections::BTreeSet::new();
     let spec = &object.data["spec"];
-    if let Some(name) = spec["defaultBackend"]["service"]["name"].as_str() {
+    if let Some(name) = service_name(default_backend(spec)) {
         names.insert(name.to_owned());
     }
     for rule in items(&spec["rules"]) {
         for path in items(&rule["http"]["paths"]) {
-            if let Some(name) = path["backend"]["service"]["name"].as_str() {
+            if let Some(name) = service_name(&path["backend"]) {
                 names.insert(name.to_owned());
             }
         }
@@ -91,10 +101,10 @@ pub(super) fn render(
         spec["ingressClassName"].as_str().unwrap_or("<none>")
     )
     .unwrap();
-    let default = if spec["defaultBackend"].is_null() {
+    let default = if default_backend(spec).is_null() {
         "<default>".into()
     } else {
-        backend(&spec["defaultBackend"], backends)
+        backend(default_backend(spec), backends)
     };
     writeln!(out, "Default backend:\t{default}").unwrap();
     let tls = items(&spec["tls"]);
@@ -153,31 +163,33 @@ pub(super) fn render(
 }
 
 fn backend(value: &Value, backends: &Backends) -> String {
-    let service = &value["service"];
-    if !service.is_null() {
-        let name = text(&service["name"]);
-        let port = service["port"]["number"]
+    if let Some(name) = service_name(value) {
+        let service_port = &value["service"]["port"];
+        let number = service_port["number"]
             .as_i64()
-            .filter(|n| *n != 0)
+            .or_else(|| value["servicePort"].as_i64())
+            .filter(|n| *n != 0);
+        let port_name = service_port["name"]
+            .as_str()
+            .or_else(|| value["servicePort"].as_str())
+            .unwrap_or_default();
+        let port = number
             .map(|n| n.to_string())
-            .unwrap_or_else(|| text(&service["port"]["name"]).into());
+            .unwrap_or_else(|| port_name.into());
         let display = format!("{name}:{port}");
         match backends.get(name) {
             Some(Ok((object, slices))) => {
-                let mut port_name = "";
+                let mut endpoint_port_name = "";
                 for p in items(&object.data["spec"]["ports"]) {
-                    if service["port"]["number"]
-                        .as_i64()
-                        .is_some_and(|n| n != 0 && Some(n) == p["port"].as_i64())
-                        || (!text(&service["port"]["name"]).is_empty()
-                            && text(&service["port"]["name"]) == text(&p["name"]))
+                    if number.is_some_and(|n| Some(n) == p["port"].as_i64())
+                        || (!port_name.is_empty() && port_name == text(&p["name"]))
                     {
-                        port_name = text(&p["name"]);
+                        endpoint_port_name = text(&p["name"]);
                     }
                 }
                 format!(
                     "{display} ({})",
-                    service::endpoints(slices, Some(port_name))
+                    service::endpoints(slices, Some(endpoint_port_name))
                 )
             }
             Some(Err(error)) => format!("{display} (<error: {error}>)"),

@@ -24,32 +24,6 @@ pub(super) fn supports(ar: &ApiResource) -> bool {
     ar.group == "autoscaling" && ar.kind == "HorizontalPodAutoscaler"
 }
 
-pub(super) async fn get(
-    client: Client,
-    namespace: &str,
-    name: &str,
-) -> Result<DynamicObject, kube::Error> {
-    let ar = ApiResource::from_gvk(&kube::core::GroupVersionKind::gvk(
-        "autoscaling",
-        "v2",
-        "HorizontalPodAutoscaler",
-    ));
-    let api: Api<DynamicObject> = Api::namespaced_with(client.clone(), namespace, &ar);
-    match api.get(name).await {
-        Ok(object) => Ok(object),
-        Err(_) => {
-            let ar = ApiResource::from_gvk(&kube::core::GroupVersionKind::gvk(
-                "autoscaling",
-                "v1",
-                "HorizontalPodAutoscaler",
-            ));
-            Api::<DynamicObject>::namespaced_with(client, namespace, &ar)
-                .get(name)
-                .await
-        }
-    }
-}
-
 pub(super) fn render(
     object: &DynamicObject,
     events: Option<&[Event]>,

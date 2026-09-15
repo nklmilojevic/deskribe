@@ -47,6 +47,11 @@ to keep using it after the call.
 ## API
 
 - **`gather(client, resource, selected)`** fetches a fresh object and related data.
+  The fresh GET uses the discovered API group, version, and plural. HPA v2 can
+  fall back to v1; ServiceCIDR and IPAddress v1 can fall back to v1beta1. These
+  fallbacks require the standard Kubernetes response for a missing endpoint.
+  Other errors are returned without a version fallback. If the fallback fails,
+  the original error is returned.
   It checks the selected UID when available, so an object recreated with the
   same name is not silently substituted. It follows paginated lists and overlaps
   independent requests.

@@ -129,41 +129,42 @@ async fn fetch_object(
     namespace: &str,
     name: &str,
 ) -> Result<DynamicObject, kube::Error> {
-    let resource = if has_upstream_specialized(selected) {
-        let group = match selected.kind.as_str() {
-            "Ingress" => "networking.k8s.io",
-            "PriorityClass" => "scheduling.k8s.io",
-            _ => selected.group.as_str(),
-        };
-        ApiResource::from_gvk(&kube::core::GroupVersionKind::gvk(
-            group,
-            "v1",
-            &selected.kind,
-        ))
-    } else {
-        selected.clone()
+    let api = |resource: &ApiResource| {
+        if namespace.is_empty() {
+            Api::<DynamicObject>::all_with(client.clone(), resource)
+        } else {
+            Api::namespaced_with(client.clone(), namespace, resource)
+        }
     };
-    let api: Api<DynamicObject> = if namespace.is_empty() {
-        Api::all_with(client.clone(), &resource)
-    } else {
-        Api::namespaced_with(client.clone(), namespace, &resource)
+    let primary_error = match api(selected).get(name).await {
+        Ok(object) => return Ok(object),
+        Err(error) => error,
     };
-    let result = api.get(name).await;
-    if result.is_err()
-        && resource.group == "networking.k8s.io"
-        && matches!(resource.kind.as_str(), "ServiceCIDR" | "IPAddress")
-    {
-        let fallback = ApiResource::from_gvk(&kube::core::GroupVersionKind::gvk(
-            &resource.group,
-            "v1beta1",
-            &resource.kind,
-        ));
-        Api::<DynamicObject>::all_with(client, &fallback)
-            .get(name)
-            .await
-    } else {
-        result
+    if !api_version_unavailable(&primary_error) {
+        return Err(primary_error);
     }
+    let version = match (
+        selected.group.as_str(),
+        selected.version.as_str(),
+        selected.kind.as_str(),
+    ) {
+        ("autoscaling", "v2", "HorizontalPodAutoscaler") => "v1",
+        ("networking.k8s.io", "v1", "ServiceCIDR" | "IPAddress") => "v1beta1",
+        _ => return Err(primary_error),
+    };
+    let mut fallback = selected.clone();
+    fallback.version = version.into();
+    fallback.api_version = format!("{}/{version}", selected.group);
+    api(&fallback).get(name).await.or(Err(primary_error))
+}
+
+fn api_version_unavailable(error: &kube::Error) -> bool {
+    // An object or namespace can also return 404. Only the generic endpoint
+    // response permits a version fallback.
+    matches!(error, kube::Error::Api(status)
+        if status.code == 404 && status.reason == "NotFound"
+            && (status.message == "the server could not find the requested resource"
+                || status.message.starts_with("the server could not find the requested resource (")))
 }
 
 async fn list_objects(

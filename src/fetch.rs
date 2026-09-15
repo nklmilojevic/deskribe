@@ -22,13 +22,7 @@ pub async fn gather(
         .name
         .as_deref()
         .ok_or("resource name is missing")?;
-    let get = async {
-        if autoscaling::supports(ar) {
-            autoscaling::get(client.clone(), ns, name).await
-        } else {
-            fetch_object(client.clone(), ar, ns, name).await
-        }
-    };
+    let get = fetch_object(client.clone(), ar, ns, name);
     let prefetch = selected
         .metadata
         .uid
