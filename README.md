@@ -119,6 +119,16 @@ code, advance the baseline, or open pull requests.
 See [upstream maintenance](docs/upstream.md) for local commands and review steps.
 This checks source changes, not Rust output parity or every upstream dependency.
 
+## Publishing
+
+A published GitHub Release triggers checks and a crates.io upload using trusted
+publishing. Use `just release patch|minor|major` from clean `main` after the
+one-time crates.io setup. This publishes only the crate, not binaries.
+
+See [release setup and commands](docs/releases.md), including the initial publish
+required before trusted publishing can be configured. `just package` verifies
+the crate without uploading it.
+
 ## License
 
 Apache-2.0. Adapted from Kubernetes and extracted from sofka.
