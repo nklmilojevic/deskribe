@@ -171,10 +171,102 @@ async fn a_mirror_pod_selection_reads_events_once() {
 }
 
 #[tokio::test]
+async fn pod_spec_changes_do_not_repeat_the_same_event_read() {
+    let (ar, mut object) = selection("", "Pod");
+    object.data["spec"] = json!({"containers":[{"name":"old"}]});
+    let mut fresh = object.clone();
+    fresh.data["spec"] = json!({"containers":[{"name":"fresh"}]});
+    let body = serde_json::to_value(&fresh).unwrap();
+    let (client, requests) = client(move |uri| {
+        if uri.path().ends_with("/events") {
+            (
+                200,
+                json!({"apiVersion":"v1","kind":"EventList","items":[]}),
+            )
+        } else {
+            (200, body.clone())
+        }
+    });
+    let description = gather(client, &ar, &object).await.unwrap();
+    assert_eq!(description.object().data["spec"], fresh.data["spec"]);
+    assert_eq!(requests.lock().unwrap().len(), 2);
+}
+
+#[tokio::test]
+async fn controller_reads_repeat_only_when_their_selector_changes() {
+    for selector_changed in [false, true] {
+        let (ar, mut selected) = selection("apps", "Deployment");
+        selected.data["spec"] = json!({"replicas":1,"selector":{"matchLabels":{"app":"old"}}});
+        let mut fresh = selected.clone();
+        fresh.data["spec"]["replicas"] = json!(2);
+        if selector_changed {
+            fresh.data["spec"]["selector"]["matchLabels"]["app"] = json!("fresh");
+        }
+        let body = serde_json::to_value(&fresh).unwrap();
+        let (client, requests) = client(move |uri| {
+            if uri.path().ends_with("/deployments/demo") {
+                (200, body.clone())
+            } else if uri.path().ends_with("/replicasets") {
+                (
+                    200,
+                    json!({"apiVersion":"apps/v1","kind":"ReplicaSetList","items":[]}),
+                )
+            } else {
+                assert!(uri.path().ends_with("/events"), "{uri}");
+                (
+                    200,
+                    json!({"apiVersion":"v1","kind":"EventList","items":[]}),
+                )
+            }
+        });
+        gather(client, &ar, &selected).await.unwrap();
+        assert_eq!(
+            requests.lock().unwrap().len(),
+            if selector_changed { 5 } else { 3 }
+        );
+    }
+}
+
+#[tokio::test]
+async fn failed_get_does_not_wait_for_speculative_reads() {
+    let (ar, object) = selection("example.com", "Widget");
+    let client = Client::new(
+        tower::service_fn(move |request: http::Request<kube::client::Body>| {
+            let events = request.uri().path().ends_with("/events");
+            async move {
+                let (status, body) = if events {
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                    (
+                        200,
+                        json!({"apiVersion":"v1","kind":"EventList","items":[]}),
+                    )
+                } else {
+                    (403, failure(403))
+                };
+                Ok::<_, std::convert::Infallible>(
+                    http::Response::builder()
+                        .status(status)
+                        .body(kube::client::Body::from(body.to_string().into_bytes()))
+                        .unwrap(),
+                )
+            }
+        }),
+        "default",
+    );
+    let result = tokio::time::timeout(
+        std::time::Duration::from_millis(250),
+        gather(client, &ar, &object),
+    )
+    .await
+    .expect("the GET error should cancel the slow speculative event read");
+    let error = result.err().expect("the GET must fail");
+    assert!(error.contains("describe GET failed"));
+}
+
+#[tokio::test]
 async fn failed_pod_read_keeps_the_selection_and_surviving_events() {
-    // The uid-scoped read issued against the selection is not what rescues a
-    // failed GET: the fallback re-reads by name, so a replaced pod still shows
-    // the events recorded against it.
+    // A failed GET cancels its uid-scoped speculative read. The fallback reads
+    // by name, so a replaced pod still shows the events recorded against it.
     let (ar, object) = selection("", "Pod");
     let (client, requests) = client(move |uri| {
         if uri.path().ends_with("/events") {

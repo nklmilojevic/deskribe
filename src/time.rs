@@ -16,51 +16,81 @@
 
 use k8s_openapi::jiff::Timestamp;
 use k8s_openapi::jiff::tz::TimeZone;
+use std::fmt;
 
-pub(crate) fn age(time: Option<Timestamp>, now: Timestamp) -> String {
-    let Some(time) = time.filter(|t| t.as_second() != -62135596800) else {
-        return "<unknown>".into();
-    };
-    human_duration((now.as_nanosecond() - time.as_nanosecond()) / 1_000_000_000)
+#[derive(Clone, Copy)]
+pub(crate) enum HumanDuration {
+    Unknown,
+    Seconds(i128),
 }
 
-pub(crate) fn human_duration(seconds: i128) -> String {
-    let minutes = seconds / 60;
-    let hours = minutes / 60;
-    let days = hours / 24;
-    let years = days / 365;
-    let pair = |n, suffix, rest, tail| {
-        if rest == 0 {
-            format!("{n}{suffix}")
-        } else {
-            format!("{n}{suffix}{rest}{tail}")
+impl fmt::Display for HumanDuration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self::Seconds(seconds) = *self else {
+            return f.write_str("<unknown>");
+        };
+        let minutes = seconds / 60;
+        let hours = minutes / 60;
+        let days = hours / 24;
+        let years = days / 365;
+        let pair = |f: &mut fmt::Formatter<'_>, n, suffix, rest, tail| {
+            write!(f, "{n}{suffix}")?;
+            if rest != 0 {
+                write!(f, "{rest}{tail}")?;
+            }
+            Ok(())
+        };
+        match seconds {
+            ..=-2 => f.write_str("<invalid>"),
+            -1 => f.write_str("0s"),
+            0..120 => write!(f, "{seconds}s"),
+            _ if minutes < 10 => pair(f, minutes, "m", seconds % 60, "s"),
+            _ if minutes < 180 => write!(f, "{minutes}m"),
+            _ if hours < 8 => pair(f, hours, "h", minutes % 60, "m"),
+            _ if hours < 48 => write!(f, "{hours}h"),
+            _ if days < 8 => pair(f, days, "d", hours % 24, "h"),
+            _ if days < 730 => write!(f, "{days}d"),
+            _ if days < 2920 => pair(f, years, "y", days % 365, "d"),
+            _ => write!(f, "{years}y"),
         }
-    };
-    match seconds {
-        ..=-2 => "<invalid>".into(),
-        -1 => "0s".into(),
-        0..120 => format!("{seconds}s"),
-        _ if minutes < 10 => pair(minutes, "m", seconds % 60, "s"),
-        _ if minutes < 180 => format!("{minutes}m"),
-        _ if hours < 8 => pair(hours, "h", minutes % 60, "m"),
-        _ if hours < 48 => format!("{hours}h"),
-        _ if days < 8 => pair(days, "d", hours % 24, "h"),
-        _ if days < 730 => format!("{days}d"),
-        _ if days < 2920 => pair(years, "y", days % 365, "d"),
-        _ => format!("{years}y"),
     }
 }
 
+pub(crate) fn age(time: Option<Timestamp>, now: Timestamp) -> HumanDuration {
+    match time.filter(|t| t.as_second() != -62135596800) {
+        Some(time) => {
+            HumanDuration::Seconds((now.as_nanosecond() - time.as_nanosecond()) / 1_000_000_000)
+        }
+        None => HumanDuration::Unknown,
+    }
+}
+
+pub(crate) fn human_duration(seconds: i128) -> HumanDuration {
+    HumanDuration::Seconds(seconds)
+}
+
 pub(crate) fn timestamp(value: &str, zone: &k8s_openapi::jiff::tz::TimeZone) -> String {
-    value
-        .parse::<Timestamp>()
-        .ok()
-        .map(|t| {
-            t.to_zoned(zone.clone())
-                .strftime("%a, %d %b %Y %H:%M:%S %z")
-                .to_string()
-        })
-        .unwrap_or_else(|| "Mon, 01 Jan 0001 00:00:00 +0000".into())
+    value.parse::<Timestamp>().ok().map_or_else(
+        || invalid_timestamp().into(),
+        |time| format_timestamp(time, zone),
+    )
+}
+
+pub(crate) fn optional_timestamp(value: Option<Timestamp>, zone: &TimeZone) -> String {
+    value.map_or_else(
+        || invalid_timestamp().into(),
+        |time| format_timestamp(time, zone),
+    )
+}
+
+fn format_timestamp(time: Timestamp, zone: &TimeZone) -> String {
+    time.to_zoned(zone.clone())
+        .strftime("%a, %d %b %Y %H:%M:%S %z")
+        .to_string()
+}
+
+fn invalid_timestamp() -> &'static str {
+    "Mon, 01 Jan 0001 00:00:00 +0000"
 }
 
 pub(crate) fn value_timestamp(value: &serde_json::Value, zone: &TimeZone) -> String {
@@ -90,7 +120,7 @@ mod tests {
             (63158400, "2y1d"),
             (252288000, "8y"),
         ] {
-            assert_eq!(human_duration(seconds), expected);
+            assert_eq!(human_duration(seconds).to_string(), expected);
         }
     }
 }

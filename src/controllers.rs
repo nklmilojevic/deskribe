@@ -8,7 +8,7 @@ use crate::api::list_objects;
 use crate::events::with_events;
 use crate::json::{integer, items, text};
 use crate::metadata::{annotation_section, identity, label_section};
-use crate::time::value_timestamp;
+use crate::time::optional_timestamp;
 use crate::{pod, policy, quantity};
 use k8s_openapi::api::core::v1::Event;
 use k8s_openapi::jiff::Timestamp;
@@ -101,18 +101,19 @@ pub(crate) fn render(
     }
     let raw_selector = if selected == "<none>" { "" } else { &selected };
     let mut out = identity(&object.metadata, true);
-    let created = object
-        .metadata
-        .creation_timestamp
-        .as_ref()
-        .map(|t| Value::String(t.0.to_string()))
-        .unwrap_or(Value::Null);
     let mut prefix = String::new();
     if matches!(kind, "Deployment" | "StatefulSet") {
         writeln!(
             prefix,
             "CreationTimestamp:\t{}",
-            value_timestamp(&created, zone)
+            optional_timestamp(
+                object
+                    .metadata
+                    .creation_timestamp
+                    .as_ref()
+                    .map(|time| time.0),
+                zone
+            )
         )
         .unwrap();
     }
@@ -286,17 +287,14 @@ pub(crate) fn render(
             .iter()
             .find(|rs| templates_match(&rs.data["spec"]["template"], template))
             .copied();
-        let old: Vec<_> = owned
-            .iter()
-            .copied()
-            .filter(|rs| new.is_none_or(|new| new.metadata.uid != rs.metadata.uid))
-            .collect();
-        if !old.is_empty() || new.is_some() {
+        let is_old =
+            |rs: &&DynamicObject| new.is_none_or(|new| new.metadata.uid != rs.metadata.uid);
+        if owned.iter().any(is_old) || new.is_some() {
             writeln!(
                 out,
                 "OldReplicaSets:\t{}\nNewReplicaSet:\t{}",
-                replica_sets(&old),
-                replica_sets(&new.into_iter().collect::<Vec<_>>())
+                replica_sets(owned.iter().copied().filter(is_old)),
+                replica_sets(new)
             )
             .unwrap();
         }
@@ -369,21 +367,22 @@ fn object_match(a: &Value, b: &Value, compare: impl Fn(&str, &Value, &Value) -> 
             None => false,
         })
 }
-fn replica_sets(sets: &[&DynamicObject]) -> String {
-    if sets.is_empty() {
-        return "<none>".into();
+fn replica_sets<'a>(sets: impl IntoIterator<Item = &'a DynamicObject>) -> String {
+    let mut out = String::new();
+    for rs in sets {
+        if !out.is_empty() {
+            out.push_str(", ");
+        }
+        write!(
+            out,
+            "{} ({}/{} replicas created)",
+            rs.metadata.name.as_deref().unwrap_or_default(),
+            integer(&rs.data["status"]["replicas"]),
+            integer(&rs.data["spec"]["replicas"])
+        )
+        .unwrap();
     }
-    sets.iter()
-        .map(|rs| {
-            format!(
-                "{} ({}/{} replicas created)",
-                rs.metadata.name.as_deref().unwrap_or_default(),
-                integer(&rs.data["status"]["replicas"]),
-                integer(&rs.data["spec"]["replicas"])
-            )
-        })
-        .collect::<Vec<_>>()
-        .join(", ")
+    if out.is_empty() { "<none>".into() } else { out }
 }
 fn claims(out: &mut String, claims: &[Value]) {
     if claims.is_empty() {

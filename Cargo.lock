@@ -237,6 +237,7 @@ dependencies = [
  "memchr",
  "serde",
  "serde_json",
+ "smallvec",
  "tokio",
  "tower",
  "x509-parser",

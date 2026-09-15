@@ -4,7 +4,8 @@
 // Adapted from kubectl v0.35.1 pkg/describe/describe.go. See LICENSE-APACHE.
 
 use crate::events::with_events;
-use crate::time::{human_duration, value_timestamp};
+use crate::json::text;
+use crate::time::{human_duration, optional_timestamp};
 use k8s_openapi::api::core::v1::Event;
 use k8s_openapi::jiff::Timestamp;
 use k8s_openapi::jiff::tz::TimeZone;
@@ -15,6 +16,22 @@ use std::fmt::Write;
 use base64::Engine;
 use x509_parser::{extensions::GeneralName, prelude::*};
 
+fn decode_request(input: &str) -> Result<Vec<u8>, base64::DecodeError> {
+    #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
+    {
+        use base64::engine::general_purpose::GeneralPurposeConfig;
+        use base64::engine::simd::Simd;
+        use std::sync::OnceLock;
+
+        static ENGINE: OnceLock<Simd> = OnceLock::new();
+        ENGINE
+            .get_or_init(|| Simd::standard(GeneralPurposeConfig::new()))
+            .decode(input)
+    }
+    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+    base64::engine::general_purpose::STANDARD.decode(input)
+}
+
 pub(crate) fn render(
     object: &DynamicObject,
     events: Option<&[Event]>,
@@ -22,9 +39,7 @@ pub(crate) fn render(
     zone: &TimeZone,
 ) -> Result<String, String> {
     let spec = &object.data["spec"];
-    let text = |v: &serde_json::Value| v.as_str().unwrap_or_default().to_owned();
-    let bytes = base64::engine::general_purpose::STANDARD
-        .decode(text(&spec["request"]))
+    let bytes = decode_request(text(&spec["request"]))
         .map_err(|_| "Error parsing CSR: invalid request encoding")?;
     let (_, pem) = x509_parser::pem::parse_x509_pem(&bytes)
         .map_err(|_| "Error parsing CSR: PEM block type must be CERTIFICATE REQUEST")?;
@@ -52,8 +67,12 @@ pub(crate) fn render(
         object.metadata.name.as_deref().unwrap_or_default(),
         inline(&object.metadata.labels),
         inline(&object.metadata.annotations),
-        value_timestamp(
-            &serde_json::to_value(&object.metadata.creation_timestamp).unwrap_or_default(),
+        optional_timestamp(
+            object
+                .metadata
+                .creation_timestamp
+                .as_ref()
+                .map(|time| time.0),
             zone
         ),
         text(&spec["username"])

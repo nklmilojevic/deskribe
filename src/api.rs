@@ -91,13 +91,25 @@ pub(crate) async fn fetch_events(
     meta: &ObjectMeta,
     kind: &str,
 ) -> Result<Vec<Event>, String> {
+    fetch_events_with_uid(client, meta, kind, meta.uid.as_deref()).await
+}
+
+/// Fetch events while overriding the UID component of the object reference.
+/// This avoids cloning all metadata when only event identity differs, as it
+/// does for static Pods and the Node name-based compatibility query.
+pub(crate) async fn fetch_events_with_uid(
+    client: Client,
+    meta: &ObjectMeta,
+    kind: &str,
+    uid: Option<&str>,
+) -> Result<Vec<Event>, String> {
     let ns = meta.namespace.as_deref().unwrap_or_default();
     let name = meta.name.as_deref().unwrap_or_default();
     let mut selector = format!("involvedObject.name={name},involvedObject.namespace={ns}");
     if !kind.is_empty() {
         write!(selector, ",involvedObject.kind={kind}").unwrap();
     }
-    if let Some(uid) = meta.uid.as_deref().filter(|s| !s.is_empty()) {
+    if let Some(uid) = uid.filter(|s| !s.is_empty()) {
         write!(selector, ",involvedObject.uid={uid}").unwrap();
     }
     let api: Api<Event> = if ns.is_empty() {

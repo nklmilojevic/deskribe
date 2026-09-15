@@ -18,6 +18,7 @@ use crate::format::tabbed;
 use crate::time::age;
 use k8s_openapi::api::core::v1::Event;
 use k8s_openapi::jiff::Timestamp;
+use smallvec::SmallVec;
 use std::fmt::Write;
 
 pub(crate) fn with_events(mut out: String, events: Option<&[Event]>, now: Timestamp) -> String {
@@ -32,7 +33,7 @@ pub(crate) fn with_events(mut out: String, events: Option<&[Event]>, now: Timest
     let mut rows = String::from(
         "Events:\n  Type\tReason\tAge\tFrom\tMessage\n  ----\t------\t----\t----\t-------\n",
     );
-    let mut events: Vec<_> = events.iter().collect();
+    let mut events: SmallVec<[&Event; 16]> = events.iter().collect();
     events.sort_by_key(|e| e.last_timestamp.as_ref().map(|t| t.0));
     for e in events {
         let first = age(
@@ -42,21 +43,32 @@ pub(crate) fn with_events(mut out: String, events: Option<&[Event]>, now: Timest
                 .or_else(|| e.first_timestamp.as_ref().map(|t| t.0)),
             now,
         );
-        let interval = if let Some(series) = &e.series {
-            format!(
+        write!(
+            rows,
+            "  {}\t{}\t",
+            e.type_.as_deref().unwrap_or_default(),
+            e.reason.as_deref().unwrap_or_default()
+        )
+        .unwrap();
+        if let Some(series) = &e.series {
+            write!(
+                rows,
                 "{} (x{} over {first})",
                 age(series.last_observed_time.as_ref().map(|t| t.0), now),
                 series.count.unwrap_or_default()
             )
+            .unwrap();
         } else if e.count.unwrap_or_default() > 1 {
-            format!(
+            write!(
+                rows,
                 "{} (x{} over {first})",
                 age(e.last_timestamp.as_ref().map(|t| t.0), now),
                 e.count.unwrap()
             )
+            .unwrap();
         } else {
-            first
-        };
+            write!(rows, "{first}").unwrap();
+        }
         let source = e
             .source
             .as_ref()
@@ -65,22 +77,16 @@ pub(crate) fn with_events(mut out: String, events: Option<&[Event]>, now: Timest
             .or(e.reporting_component.as_deref())
             .unwrap_or_default();
         let message = e.message.as_deref().unwrap_or_default().trim();
-        let message = match e
+        write!(rows, "\t{source}\t").unwrap();
+        if let Some(field) = e
             .involved_object
             .field_path
             .as_deref()
             .filter(|s| !s.is_empty())
         {
-            Some(field) => format!("{field}: {message}"),
-            None => message.into(),
-        };
-        writeln!(
-            rows,
-            "  {}\t{}\t{interval}\t{source}\t{message}",
-            e.type_.as_deref().unwrap_or_default(),
-            e.reason.as_deref().unwrap_or_default()
-        )
-        .unwrap();
+            write!(rows, "{field}: ").unwrap();
+        }
+        writeln!(rows, "{message}").unwrap();
     }
     out.push_str(&tabbed(&rows));
     out

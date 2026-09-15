@@ -104,15 +104,44 @@ impl<'a> Layout<'a> {
         self.cells.clear();
         self.rows.clear();
         self.widths.clear();
-        for line in section.split_terminator('\n') {
-            let start = self.cells.len() as u32;
-            for cell in line.split(['\t', '\x0b']) {
-                self.cells.push(cell);
-                self.widths.push(cell_width(cell));
-            }
-            self.rows.push((start, self.cells.len() as u32));
-        }
         self.pad.clear();
+
+        // Count the structural bytes with one vectorized pass so all four
+        // scratch tables allocate their final capacity once. Without this, a
+        // large Node table repeatedly grew and copied each Vec while parsing.
+        let (mut row_count, mut separator_count) = (0usize, 0usize);
+        for index in memchr::memchr3_iter(b'\n', b'\t', b'\x0b', section.as_bytes()) {
+            if section.as_bytes()[index] == b'\n' {
+                row_count += 1;
+            } else {
+                separator_count += 1;
+            }
+        }
+        row_count += usize::from(!section.is_empty() && !section.ends_with('\n'));
+        let cell_count = row_count + separator_count;
+        self.cells.reserve(cell_count);
+        self.widths.reserve(cell_count);
+        self.pad.reserve(cell_count);
+        self.rows.reserve(row_count);
+
+        let bytes = section.as_bytes();
+        let (mut cell_start, mut row_start) = (0usize, 0u32);
+        for index in memchr::memchr3_iter(b'\n', b'\t', b'\x0b', bytes) {
+            let cell = &section[cell_start..index];
+            self.cells.push(cell);
+            self.widths.push(cell_width(cell));
+            cell_start = index + 1;
+            if bytes[index] == b'\n' {
+                self.rows.push((row_start, self.cells.len() as u32));
+                row_start = self.cells.len() as u32;
+            }
+        }
+        if !section.is_empty() && !section.ends_with('\n') {
+            let cell = &section[cell_start..];
+            self.cells.push(cell);
+            self.widths.push(cell_width(cell));
+            self.rows.push((row_start, self.cells.len() as u32));
+        }
         self.pad.resize(self.cells.len(), 0);
         align(
             &self.rows,

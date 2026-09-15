@@ -3,19 +3,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // Adapted from kubectl describers; see NOTICE and LICENSE-APACHE.
 
-use crate::api::{fetch_events, fetch_object};
+use crate::api::{fetch_events, fetch_events_with_uid, fetch_object};
 use crate::description::Snapshot;
 use crate::networking::{ingress, service};
 use crate::resource::{EventPolicy, ResourceKind};
 use crate::{Description, RenderOptions, controllers, node, quotas, storage};
 use k8s_openapi::api::core::v1::Event;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::{
     Client,
     api::{ApiResource, DynamicObject},
 };
-use serde_json::Value;
-use std::borrow::Cow;
 
 /// A static pod's events are recorded against the uid of its mirror, not the
 /// uid of the API object the kubelet publishes.
@@ -60,29 +57,30 @@ pub async fn gather(
             resource_events(client.clone(), kind, &ar.kind, selected),
         ))
     };
-    let (fetched, speculated) = tokio::join!(get, speculative);
+    // A failed GET makes every speculative result unusable. `try_join!` drops
+    // those reads immediately instead of waiting for a slow list request or
+    // event query before returning the GET error.
+    let fetched = tokio::try_join!(get, async { Ok::<_, kube::Error>(speculative.await) });
 
-    let fresh = match fetched {
-        Ok(fresh) => fresh,
+    let (fresh, speculated) = match fetched {
+        Ok(result) => result,
         Err(error) => {
-            if kind == ResourceKind::Pod {
-                let mut reference = selected.metadata.clone();
-                reference.uid = None;
-                if let Ok(events) = fetch_events(client, &reference, "").await
-                    && !events.is_empty()
-                {
-                    let message = match &error {
-                        kube::Error::Api(response) => response.message.clone(),
-                        _ => error.to_string(),
-                    };
-                    return Ok(Description {
-                        object: selected.clone(),
-                        events: Some(events),
-                        snapshot: Snapshot::PodGetFailure(format!(
-                            "Pod '{name}': error '{message}', but found events.\n"
-                        )),
-                    });
-                }
+            if kind == ResourceKind::Pod
+                && let Ok(events) =
+                    fetch_events_with_uid(client, &selected.metadata, "", None).await
+                && !events.is_empty()
+            {
+                let message = match &error {
+                    kube::Error::Api(response) => response.message.clone(),
+                    _ => error.to_string(),
+                };
+                return Ok(Description {
+                    object: selected.clone(),
+                    events: Some(events),
+                    snapshot: Snapshot::PodGetFailure(format!(
+                        "Pod '{name}': error '{message}', but found events.\n"
+                    )),
+                });
             }
             return Err(format!("describe GET failed: {error}"));
         }
@@ -94,7 +92,7 @@ pub async fn gather(
     }
 
     let (snapshot, events) = match speculated {
-        Some(results) if reads_agree(selected, &fresh) => results,
+        Some(results) if reads_agree(kind, selected, &fresh) => results,
         _ => tokio::join!(
             related(client.clone(), kind, &fresh),
             resource_events(client, kind, &ar.kind, &fresh),
@@ -110,37 +108,71 @@ pub async fn gather(
 /// Whether reads built from the selection would have been built the same way
 /// from the fresh object.
 ///
-/// Related reads derive from the name, namespace and `spec` — never `status`,
-/// which is the field that actually churns — and the Pod event query
-/// additionally follows the mirror annotation. Name and namespace are what the
-/// GET asked for, and identity is checked separately, so `spec` and that one
-/// annotation are what is left to compare.
-fn reads_agree(selected: &DynamicObject, fresh: &DynamicObject) -> bool {
-    fn inputs(object: &DynamicObject) -> (&Value, Option<&String>) {
-        (
-            &object.data["spec"],
-            object
-                .metadata
-                .annotations
-                .as_ref()
-                .and_then(|annotations| annotations.get(MIRROR)),
-        )
+/// Name and namespace are fixed by the GET path and identity is checked
+/// separately. Most reads need nothing else; controller lists additionally use
+/// `spec.selector`, Ingress backend discovery uses `spec`, and Pod events may
+/// follow the mirror annotation.
+fn reads_agree(kind: ResourceKind, selected: &DynamicObject, fresh: &DynamicObject) -> bool {
+    fn mirror(object: &DynamicObject) -> Option<&String> {
+        object
+            .metadata
+            .annotations
+            .as_ref()
+            .and_then(|annotations| annotations.get(MIRROR))
     }
-    inputs(selected) == inputs(fresh)
-}
-
-/// The object an event query is scoped by.
-fn event_reference(kind: ResourceKind, meta: &ObjectMeta) -> Cow<'_, ObjectMeta> {
-    if kind != ResourceKind::Pod {
-        return Cow::Borrowed(meta);
-    }
-    match meta.annotations.as_ref().and_then(|a| a.get(MIRROR)) {
-        Some(uid) => {
-            let mut reference = meta.clone();
-            reference.uid = Some(uid.clone());
-            Cow::Owned(reference)
+    match kind {
+        // Pod has no related-resource read; only its event identity follows
+        // this annotation.
+        ResourceKind::Pod => mirror(selected) == mirror(fresh),
+        // Controller related reads use only the label selector, not replicas,
+        // template, strategy, status, or the rest of the object.
+        ResourceKind::ReplicationController
+        | ResourceKind::StatefulSet
+        | ResourceKind::Deployment
+        | ResourceKind::DaemonSet
+        | ResourceKind::ReplicaSet => {
+            selected.data["spec"]["selector"] == fresh.data["spec"]["selector"]
         }
-        None => Cow::Borrowed(meta),
+        // Ingress discovers its backend Service names throughout the spec.
+        ResourceKind::Ingress => selected.data["spec"] == fresh.data["spec"],
+        // Every kind below derives its related read and event query from the
+        // name and namespace the GET already used, and identity is validated
+        // separately — so a speculative read is always reusable.
+        //
+        // Enumerated rather than matched with a wildcard on purpose: adding a
+        // kind whose related read consults `spec` must not silently inherit
+        // "always agree" and serve stale data. A new variant fails to compile
+        // here until its inputs are stated.
+        ResourceKind::Service
+        | ResourceKind::Node
+        | ResourceKind::ConfigMap
+        | ResourceKind::Secret
+        | ResourceKind::ServiceAccount
+        | ResourceKind::LimitRange
+        | ResourceKind::ResourceQuota
+        | ResourceKind::PersistentVolume
+        | ResourceKind::PersistentVolumeClaim
+        | ResourceKind::Namespace
+        | ResourceKind::Endpoints
+        | ResourceKind::EndpointSlice
+        | ResourceKind::HorizontalPodAutoscaler
+        | ResourceKind::IngressClass
+        | ResourceKind::ServiceCIDR
+        | ResourceKind::IPAddress
+        | ResourceKind::NetworkPolicy
+        | ResourceKind::Job
+        | ResourceKind::CronJob
+        | ResourceKind::CertificateSigningRequest
+        | ResourceKind::StorageClass
+        | ResourceKind::CSINode
+        | ResourceKind::VolumeAttributesClass
+        | ResourceKind::PodDisruptionBudget
+        | ResourceKind::Role
+        | ResourceKind::ClusterRole
+        | ResourceKind::RoleBinding
+        | ResourceKind::ClusterRoleBinding
+        | ResourceKind::PriorityClass
+        | ResourceKind::Generic => true,
     }
 }
 
@@ -154,8 +186,16 @@ async fn resource_events(
         EventPolicy::Skip => Ok(None),
         // Upstream scopes pod events by uid alone, without the kind filter.
         EventPolicy::Pod => {
-            let reference = event_reference(kind, &object.metadata);
-            Ok(fetch_events(client, &reference, "").await.ok())
+            let uid = object
+                .metadata
+                .annotations
+                .as_ref()
+                .and_then(|annotations| annotations.get(MIRROR))
+                .map(String::as_str)
+                .or(object.metadata.uid.as_deref());
+            Ok(fetch_events_with_uid(client, &object.metadata, "", uid)
+                .await
+                .ok())
         }
         EventPolicy::Optional => Ok(fetch_events(client, &object.metadata, ar_kind).await.ok()),
         EventPolicy::Required => fetch_events(client, &object.metadata, ar_kind)
