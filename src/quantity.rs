@@ -1,4 +1,4 @@
-// Copyright 2026 sofka contributors.
+// Copyright 2026 Nikola Milojević.
 // SPDX-License-Identifier: Apache-2.0
 //! Exact nanounit arithmetic for resource summaries and downward-API divisors.
 

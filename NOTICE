@@ -1,5 +1,5 @@
 deskribe
-Copyright 2026 sofka contributors.
+Copyright 2026 Nikola Milojević.
 
 This library includes Rust adaptations of Kubernetes code:
 - kubernetes/kubectl pkg/describe and supporting helpers (originally v0.35.1,

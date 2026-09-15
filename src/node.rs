@@ -1,5 +1,5 @@
 // Copyright 2014 The Kubernetes Authors.
-// Copyright 2026 sofka contributors.
+// Copyright 2026 Nikola Milojević.
 // SPDX-License-Identifier: Apache-2.0
 // Adapted from kubectl v0.37.0 pkg/describe/describe.go and component-helpers/resource.
 // See LICENSE-APACHE.
