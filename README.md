@@ -13,11 +13,14 @@ not guaranteed to match every kubectl version exactly.
 
 ## Use it
 
-The crate is not published yet. For local development:
+Deskribe is available on [crates.io](https://crates.io/crates/deskribe).
+See the [API documentation](https://docs.rs/deskribe).
+
+Add these dependencies to your application's `Cargo.toml`:
 
 ```toml
 [dependencies]
-deskribe = { path = "../deskribe" }
+deskribe = "0.1.2"
 kube = { version = "4.2", default-features = false, features = ["client", "rustls-tls", "aws-lc-rs"] }
 k8s-openapi = { version = "0.28", features = ["latest"] }
 ```
