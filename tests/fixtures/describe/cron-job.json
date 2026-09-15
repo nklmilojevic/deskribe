@@ -1,0 +1,44 @@
+{
+  "plural": "cronjobs",
+  "object": {
+    "apiVersion": "batch/v1",
+    "kind": "CronJob",
+    "metadata": { "name": "demo", "namespace": "default", "uid": "demo-uid" },
+    "spec": {
+      "schedule": "*/5 * * * *",
+      "timeZone": "Etc/UTC",
+      "concurrencyPolicy": "Forbid",
+      "suspend": false,
+      "successfulJobsHistoryLimit": 3,
+      "failedJobsHistoryLimit": 1,
+      "startingDeadlineSeconds": 60,
+      "jobTemplate": {
+        "spec": {
+          "parallelism": 1,
+          "completions": 1,
+          "template": {
+            "metadata": { "labels": { "app": "cron" } },
+            "spec": {
+              "serviceAccountName": "runner",
+              "containers": [
+                {
+                  "name": "worker",
+                  "image": "example.invalid/worker",
+                  "command": ["echo", "hello"]
+                }
+              ],
+              "restartPolicy": "Never",
+              "priorityClassName": "batch",
+              "volumes": [{ "name": "scratch", "emptyDir": {} }]
+            }
+          }
+        }
+      }
+    },
+    "status": {
+      "lastScheduleTime": "2026-01-01T00:00:00Z",
+      "active": [{ "name": "demo-1" }, { "name": "demo-2" }]
+    }
+  },
+  "events": []
+}

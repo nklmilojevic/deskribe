@@ -1,0 +1,32 @@
+Name:               demo
+Namespace:          default
+CreationTimestamp:  Thu, 01 Jan 2026 00:00:00 +0000
+Selector:           app=web
+Labels:             app=web
+Annotations:        <none>
+Service Name:       web
+Replicas:           3 desired | 2 total
+Update Strategy:    RollingUpdate
+  Partition:        1
+  MaxUnavailable:   25%
+Pods Status:        2 Running / 1 Waiting / 1 Succeeded / 1 Failed
+Pod Template:
+  Labels:  app=web
+  Containers:
+   web:
+    Image:         example.invalid/web
+    Port:          <none>
+    Host Port:     <none>
+    Environment:   <none>
+    Mounts:        <none>
+  Volumes:         <none>
+  Node-Selectors:  <none>
+  Tolerations:     <none>
+Volume Claims:
+  Name:          data
+  StorageClass:  fast
+  Labels:        app=web
+  Annotations:   <none>
+  Capacity:      1Gi
+  Access Modes:  [ReadWriteOnce]
+Events:          <none>

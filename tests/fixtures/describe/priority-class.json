@@ -1,0 +1,17 @@
+{
+  "plural": "priorityclasses",
+  "object": {
+    "apiVersion": "scheduling.k8s.io/v1",
+    "kind": "PriorityClass",
+    "metadata": {
+      "name": "demo",
+      "uid": "demo-uid",
+      "creationTimestamp": "2026-01-01T00:00:00Z"
+    },
+    "value": 1000,
+    "globalDefault": false,
+    "preemptionPolicy": "PreemptLowerPriority",
+    "description": "Synthetic priority class"
+  },
+  "events": []
+}

@@ -1,0 +1,18 @@
+{
+  "plural": "volumeattributesclasses",
+  "object": {
+    "apiVersion": "storage.k8s.io/v1",
+    "kind": "VolumeAttributesClass",
+    "metadata": {
+      "name": "demo",
+      "uid": "demo-uid",
+      "creationTimestamp": "2026-01-01T00:00:00Z"
+    },
+    "driverName": "example.com/csi",
+    "parameters": {
+      "tier": "fast",
+      "iops": "1000"
+    }
+  },
+  "events": []
+}

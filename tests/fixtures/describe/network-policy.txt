@@ -1,0 +1,24 @@
+Name:         demo
+Namespace:    default
+Created on:   2026-01-01 00:00:00 +0000 UTC
+Labels:       <none>
+Annotations:  <none>
+Spec:
+  PodSelector:     app=web
+  Allowing ingress traffic:
+    To Port Range: 8000-8080/TCP
+    From:
+      NamespaceSelector: team=blue
+      PodSelector: role
+    From:
+      IPBlock:
+        CIDR: 10.0.0.0/8
+        Except: 10.1.0.0/16
+    ----------
+    To Port: <any> (traffic allowed to all ports)
+    From: <any> (traffic not restricted by source)
+  Allowing egress traffic:
+    To Port: 53/UDP
+    To:
+      NamespaceSelector: <none>
+  Policy Types: Ingress, Egress

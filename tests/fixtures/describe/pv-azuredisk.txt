@@ -1,0 +1,25 @@
+Name:              demo
+Labels:            <none>
+Annotations:       <none>
+Finalizers:        [kubernetes.io/pv-protection]
+StorageClass:      fast
+Status:            Bound
+Claim:             default/claim
+Reclaim Policy:    Retain
+Access Modes:      RWO
+VolumeMode:        Filesystem
+Capacity:          1Gi
+Node Affinity:     
+  Required Terms:  
+    Term 0:        topology.kubernetes.io/zone in [zone-a, zone-b]
+                   disk exists
+Message:           
+Source:
+    Type:         AzureDisk (an Azure Data Disk mount on the host and bind mount to the pod)
+    DiskName:     disk
+    DiskURI:      https://example.org/disk
+    Kind:         Managed
+    FSType:       ext4
+    CachingMode:  ReadOnly
+    ReadOnly:     true
+Events:           <none>

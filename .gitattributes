@@ -1,0 +1,2 @@
+# Golden output includes significant whitespace; preserve its exact bytes.
+tests/fixtures/describe/*.txt -text -whitespace

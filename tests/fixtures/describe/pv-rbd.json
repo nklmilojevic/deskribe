@@ -1,0 +1,62 @@
+{
+  "plural": "persistentvolumes",
+  "object": {
+    "apiVersion": "v1",
+    "kind": "PersistentVolume",
+    "metadata": {
+      "name": "demo",
+      "uid": "demo-uid",
+      "finalizers": ["kubernetes.io/pv-protection"]
+    },
+    "spec": {
+      "storageClassName": "fast",
+      "claimRef": {
+        "namespace": "default",
+        "name": "claim"
+      },
+      "persistentVolumeReclaimPolicy": "Retain",
+      "accessModes": ["ReadWriteOnce"],
+      "volumeMode": "Filesystem",
+      "capacity": {
+        "storage": "1Gi"
+      },
+      "nodeAffinity": {
+        "required": {
+          "nodeSelectorTerms": [
+            {
+              "matchExpressions": [
+                {
+                  "key": "topology.kubernetes.io/zone",
+                  "operator": "In",
+                  "values": ["zone-a", "zone-b"]
+                },
+                {
+                  "key": "disk",
+                  "operator": "Exists"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "rbd": {
+        "monitors": ["192.0.2.1", "192.0.2.2"],
+        "image": "disk",
+        "fsType": "ext4",
+        "pool": "rbd",
+        "user": "admin",
+        "keyring": "/keyring",
+        "secretRef": {
+          "name": "credentials",
+          "namespace": "default"
+        },
+        "readOnly": true
+      }
+    },
+    "status": {
+      "phase": "Bound",
+      "message": ""
+    }
+  },
+  "events": []
+}

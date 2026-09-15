@@ -1,0 +1,209 @@
+{
+  "plural": "horizontalpodautoscalers",
+  "object": {
+    "apiVersion": "autoscaling/v2",
+    "kind": "HorizontalPodAutoscaler",
+    "metadata": {
+      "name": "demo",
+      "namespace": "default",
+      "uid": "demo-uid",
+      "creationTimestamp": "2026-01-01T00:00:00Z"
+    },
+    "spec": {
+      "scaleTargetRef": {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "name": "web"
+      },
+      "minReplicas": 2,
+      "maxReplicas": 10,
+      "metrics": [
+        {
+          "type": "Resource",
+          "resource": {
+            "name": "cpu",
+            "target": {
+              "type": "Utilization",
+              "averageUtilization": 70
+            }
+          }
+        },
+        {
+          "type": "ContainerResource",
+          "containerResource": {
+            "name": "memory",
+            "container": "web",
+            "target": {
+              "type": "AverageValue",
+              "averageValue": "128Mi"
+            }
+          }
+        },
+        {
+          "type": "External",
+          "external": {
+            "metric": {
+              "name": "queue_depth"
+            },
+            "target": {
+              "type": "Value",
+              "value": "100"
+            }
+          }
+        },
+        {
+          "type": "External",
+          "external": {
+            "metric": {
+              "name": "avg_queue"
+            },
+            "target": {
+              "type": "AverageValue",
+              "averageValue": "10"
+            }
+          }
+        },
+        {
+          "type": "Pods",
+          "pods": {
+            "metric": {
+              "name": "packets"
+            },
+            "target": {
+              "type": "AverageValue",
+              "averageValue": "1000"
+            }
+          }
+        },
+        {
+          "type": "Object",
+          "object": {
+            "metric": {
+              "name": "requests"
+            },
+            "describedObject": {
+              "kind": "Service",
+              "name": "api",
+              "apiVersion": "v1"
+            },
+            "target": {
+              "type": "Value",
+              "value": "100"
+            }
+          }
+        }
+      ],
+      "behavior": {
+        "scaleUp": {
+          "stabilizationWindowSeconds": 60,
+          "policies": [
+            {
+              "type": "Pods",
+              "value": 4,
+              "periodSeconds": 60
+            },
+            {
+              "type": "Percent",
+              "value": 100,
+              "periodSeconds": 60
+            }
+          ]
+        },
+        "scaleDown": {
+          "selectPolicy": "Min",
+          "policies": [
+            {
+              "type": "Percent",
+              "value": 10,
+              "periodSeconds": 30
+            }
+          ]
+        }
+      }
+    },
+    "status": {
+      "currentReplicas": 3,
+      "desiredReplicas": 4,
+      "currentMetrics": [
+        {
+          "type": "Resource",
+          "resource": {
+            "name": "cpu",
+            "current": {
+              "averageUtilization": 80,
+              "averageValue": "800m"
+            }
+          }
+        },
+        {
+          "type": "ContainerResource",
+          "containerResource": {
+            "name": "memory",
+            "container": "web",
+            "current": {
+              "averageValue": "64Mi"
+            }
+          }
+        },
+        {
+          "type": "External",
+          "external": {
+            "metric": {
+              "name": "queue_depth"
+            },
+            "current": {
+              "value": "50"
+            }
+          }
+        },
+        {
+          "type": "External",
+          "external": {
+            "metric": {
+              "name": "avg_queue"
+            },
+            "current": {
+              "averageValue": "20"
+            }
+          }
+        },
+        {
+          "type": "Pods",
+          "pods": {
+            "metric": {
+              "name": "packets"
+            },
+            "current": {
+              "averageValue": "1500"
+            }
+          }
+        },
+        {
+          "type": "Object",
+          "object": {
+            "metric": {
+              "name": "requests"
+            },
+            "describedObject": {
+              "kind": "Service",
+              "name": "api",
+              "apiVersion": "v1"
+            },
+            "current": {
+              "value": "120"
+            }
+          }
+        }
+      ],
+      "conditions": [
+        {
+          "type": "ScalingActive",
+          "status": "True",
+          "reason": "ValidMetricFound",
+          "message": "Able to calculate a replica count"
+        }
+      ]
+    }
+  },
+  "events": []
+}

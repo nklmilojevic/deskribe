@@ -1,0 +1,12 @@
+Name:               demo
+Labels:             <none>
+Annotations:        <none>
+CreationTimestamp:  Thu, 01 Jan 2026 00:00:00 +0000
+Spec:
+  Drivers:
+    example.com/csi:
+      Node ID:  synthetic-node
+      Allocatables:
+        Count:        16
+      Topology Keys:  [zone rack]
+Events:               <none>

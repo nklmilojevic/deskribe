@@ -1,0 +1,27 @@
+{
+  "plural": "servicecidrs",
+  "object": {
+    "apiVersion": "networking.k8s.io/v1",
+    "kind": "ServiceCIDR",
+    "metadata": {
+      "name": "demo",
+      "uid": "demo-uid",
+      "creationTimestamp": "2026-01-01T00:00:00Z"
+    },
+    "spec": {
+      "cidrs": ["10.96.0.0/12", "fd00::/108"]
+    },
+    "status": {
+      "conditions": [
+        {
+          "type": "Ready",
+          "status": "True",
+          "lastTransitionTime": "2026-01-01T00:00:00Z",
+          "reason": "Ready",
+          "message": "Allocated"
+        }
+      ]
+    }
+  },
+  "events": []
+}

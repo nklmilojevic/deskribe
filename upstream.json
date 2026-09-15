@@ -1,0 +1,23 @@
+{
+  "baseline": "v0.37.0",
+  "sources": [
+    {
+      "repository": "kubernetes/kubectl",
+      "paths": [
+        "pkg/describe",
+        "pkg/util/deployment",
+        "pkg/util/event",
+        "pkg/util/qos",
+        "pkg/util/rbac"
+      ]
+    },
+    {
+      "repository": "kubernetes/component-helpers",
+      "paths": ["resource"]
+    },
+    {
+      "repository": "kubernetes/apimachinery",
+      "paths": ["pkg/api/resource", "pkg/util/duration"]
+    }
+  ]
+}

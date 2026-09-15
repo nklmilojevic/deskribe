@@ -1,0 +1,158 @@
+{
+  "plural": "namespaces",
+  "object": {
+    "apiVersion": "v1",
+    "kind": "Namespace",
+    "metadata": {
+      "name": "demo",
+      "uid": "demo-uid"
+    },
+    "status": {
+      "phase": "Active",
+      "conditions": [
+        {
+          "type": "NamespaceContentRemaining",
+          "status": "False",
+          "lastTransitionTime": "2026-01-01T00:00:00Z",
+          "reason": "ContentRemoved",
+          "message": "No remaining content"
+        }
+      ]
+    }
+  },
+  "events": [],
+  "namespaceQuotas": [
+    {
+      "apiVersion": "v1",
+      "kind": "ResourceQuota",
+      "metadata": {
+        "name": "demo",
+        "namespace": "demo",
+        "uid": "demo-uid"
+      },
+      "spec": {
+        "scopes": [
+          "NotBestEffort"
+        ]
+      },
+      "status": {
+        "hard": {
+          "cpu": "2",
+          "memory": "1Gi",
+          "pods": "10"
+        },
+        "used": {
+          "cpu": "500m",
+          "memory": "536870912",
+          "pods": "3"
+        }
+      }
+    }
+  ],
+  "namespaceLimits": [
+    {
+      "apiVersion": "v1",
+      "kind": "LimitRange",
+      "metadata": {
+        "name": "demo",
+        "namespace": "demo",
+        "uid": "demo-uid"
+      },
+      "spec": {
+        "limits": [
+          {
+            "type": "Container",
+            "min": {
+              "cpu": "100m"
+            },
+            "max": {
+              "cpu": "2"
+            },
+            "default": {
+              "cpu": "1"
+            },
+            "defaultRequest": {
+              "cpu": "500m"
+            },
+            "maxLimitRequestRatio": {
+              "cpu": "4"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "responses": {
+    "/api/v1/namespaces/demo/resourcequotas": {
+      "apiVersion": "v1",
+      "kind": "ResourceQuotaList",
+      "metadata": {},
+      "items": [
+        {
+          "apiVersion": "v1",
+          "kind": "ResourceQuota",
+          "metadata": {
+            "name": "demo",
+            "namespace": "demo",
+            "uid": "demo-uid"
+          },
+          "spec": {
+            "scopes": [
+              "NotBestEffort"
+            ]
+          },
+          "status": {
+            "hard": {
+              "cpu": "2",
+              "memory": "1Gi",
+              "pods": "10"
+            },
+            "used": {
+              "cpu": "500m",
+              "memory": "536870912",
+              "pods": "3"
+            }
+          }
+        }
+      ]
+    },
+    "/api/v1/namespaces/demo/limitranges": {
+      "apiVersion": "v1",
+      "kind": "LimitRangeList",
+      "metadata": {},
+      "items": [
+        {
+          "apiVersion": "v1",
+          "kind": "LimitRange",
+          "metadata": {
+            "name": "demo",
+            "namespace": "demo",
+            "uid": "demo-uid"
+          },
+          "spec": {
+            "limits": [
+              {
+                "type": "Container",
+                "min": {
+                  "cpu": "100m"
+                },
+                "max": {
+                  "cpu": "2"
+                },
+                "default": {
+                  "cpu": "1"
+                },
+                "defaultRequest": {
+                  "cpu": "500m"
+                },
+                "maxLimitRequestRatio": {
+                  "cpu": "4"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

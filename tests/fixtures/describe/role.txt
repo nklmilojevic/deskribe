@@ -1,0 +1,11 @@
+Name:         demo
+Labels:       <none>
+Annotations:  <none>
+PolicyRule:
+  Resources               Non-Resource URLs  Resource Names  Verbs
+  ---------               -----------------  --------------  -----
+  pods                    []                 [demo]          [get update]
+  deployments/scale       []                 []              [watch get list]
+  pods                    []                 []              [watch get list]
+  deployments.apps/scale  []                 []              [watch get list]
+  pods.apps               []                 []              [watch get list]

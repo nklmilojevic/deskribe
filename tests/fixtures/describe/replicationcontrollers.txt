@@ -1,0 +1,24 @@
+Name:         demo
+Namespace:    default
+Selector:     app=web
+Labels:       app=web
+Annotations:  <none>
+Replicas:     2 current / 3 desired
+Pods Status:  2 Running / 1 Waiting / 1 Succeeded / 1 Failed
+Pod Template:
+  Labels:  app=web
+  Containers:
+   web:
+    Image:         example.invalid/web
+    Port:          <none>
+    Host Port:     <none>
+    Environment:   <none>
+    Mounts:        <none>
+  Volumes:         <none>
+  Node-Selectors:  <none>
+  Tolerations:     <none>
+Conditions:
+  Type        Status  Reason
+  ----        ------  ------
+  Available   True    Ready
+Events:       <none>

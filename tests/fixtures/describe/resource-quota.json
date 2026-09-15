@@ -1,0 +1,30 @@
+{
+  "plural": "resourcequotas",
+  "object": {
+    "apiVersion": "v1",
+    "kind": "ResourceQuota",
+    "metadata": {
+      "name": "demo",
+      "namespace": "default",
+      "uid": "demo-uid"
+    },
+    "spec": {
+      "scopes": [
+        "NotBestEffort"
+      ]
+    },
+    "status": {
+      "hard": {
+        "cpu": "2",
+        "memory": "1Gi",
+        "pods": "10"
+      },
+      "used": {
+        "cpu": "500m",
+        "memory": "536870912",
+        "pods": "3"
+      }
+    }
+  },
+  "events": []
+}

@@ -1,0 +1,5 @@
+Name:         demo
+Annotations:  <none>
+DriverName:   example.com/csi
+Parameters:   iops=1000,tier=fast
+Events:       <none>

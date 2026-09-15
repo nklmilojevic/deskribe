@@ -1,0 +1,32 @@
+Name:                                                  demo
+Namespace:                                             default
+Labels:                                                <none>
+Annotations:                                           <none>
+CreationTimestamp:                                     Thu, 01 Jan 2026 00:00:00 +0000
+Reference:                                             Deployment/web
+Metrics:                                               ( current / target )
+  resource cpu on pods  (as a percentage of request):  80% (800m) / 70%
+  resource memory of container "web" on pods:          64Mi / 128Mi
+  "queue_depth" (target value):                        50 / 100
+  "avg_queue" (target average value):                  20 / 10
+  "packets" on pods:                                   1500 / 1k
+  "requests" on Service/api (target value):            120 / 100
+Min replicas:                                          2
+Max replicas:                                          10
+Behavior:
+  Scale Up:
+    Stabilization Window: 60 seconds
+    Select Policy: Max
+    Policies:
+      - Type: Pods     Value: 4    Period: 60 seconds
+      - Type: Percent  Value: 100  Period: 60 seconds
+  Scale Down:
+    Select Policy: Min
+    Policies:
+      - Type: Percent  Value: 10  Period: 30 seconds
+Deployment pods:       3 current / 4 desired
+Conditions:
+  Type           Status  Reason            Message
+  ----           ------  ------            -------
+  ScalingActive  True    ValidMetricFound  Able to calculate a replica count
+Events:          <none>

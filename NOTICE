@@ -1,0 +1,17 @@
+deskribe
+Copyright 2026 Nikola Milojević.
+
+This library includes Rust adaptations of Kubernetes code:
+- kubernetes/kubectl pkg/describe and supporting helpers (originally v0.35.1,
+  with relevant v0.37.0 behavior updates).
+- kubernetes/apimachinery quantity, duration and related formatting behavior.
+- kubernetes/component-helpers resource accounting (v0.37.0).
+
+Copyright 2014 and other years as noted in source files, The Kubernetes Authors.
+Kubernetes code is licensed under the Apache License, Version 2.0.
+Source-file copyright and SPDX notices are retained. See LICENSE-APACHE.
+
+Upstream sources:
+https://github.com/kubernetes/kubectl
+https://github.com/kubernetes/apimachinery
+https://github.com/kubernetes/component-helpers

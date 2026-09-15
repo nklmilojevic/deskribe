@@ -1,0 +1,9 @@
+Name:         demo
+Labels:       <none>
+Annotations:  <none>
+Parent Reference:
+  Group:      
+  Resource:   services
+  Namespace:  default
+  Name:       service
+Events:       <none>

@@ -1,0 +1,15 @@
+Name:                  demo
+IsDefaultClass:        Yes
+Annotations:           storageclass.kubernetes.io/is-default-class=true
+Provisioner:           example.com/csi
+Parameters:            encrypted=true,type=ssd
+AllowVolumeExpansion:  True
+MountOptions:
+  noatime
+  discard
+ReclaimPolicy:      Delete
+VolumeBindingMode:  WaitForFirstConsumer
+AllowedTopologies:  
+  Term 0:           topology.kubernetes.io/zone in [a, b]
+                    rack in [west]
+Events:             <none>

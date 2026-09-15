@@ -1,0 +1,12 @@
+{
+  "object": {
+    "apiVersion": "v1",
+    "kind": "ConfigMap",
+    "metadata": {
+      "name": "demo",
+      "namespace": "default",
+      "uid": "demo-uid"
+    }
+  },
+  "events": []
+}

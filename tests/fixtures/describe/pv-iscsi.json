@@ -1,0 +1,65 @@
+{
+  "plural": "persistentvolumes",
+  "object": {
+    "apiVersion": "v1",
+    "kind": "PersistentVolume",
+    "metadata": {
+      "name": "demo",
+      "uid": "demo-uid",
+      "finalizers": ["kubernetes.io/pv-protection"]
+    },
+    "spec": {
+      "storageClassName": "fast",
+      "claimRef": {
+        "namespace": "default",
+        "name": "claim"
+      },
+      "persistentVolumeReclaimPolicy": "Retain",
+      "accessModes": ["ReadWriteOnce"],
+      "volumeMode": "Filesystem",
+      "capacity": {
+        "storage": "1Gi"
+      },
+      "nodeAffinity": {
+        "required": {
+          "nodeSelectorTerms": [
+            {
+              "matchExpressions": [
+                {
+                  "key": "topology.kubernetes.io/zone",
+                  "operator": "In",
+                  "values": ["zone-a", "zone-b"]
+                },
+                {
+                  "key": "disk",
+                  "operator": "Exists"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "iscsi": {
+        "targetPortal": "192.0.2.1:3260",
+        "iqn": "iqn.2026-01.org.example:test",
+        "lun": 2,
+        "iscsiInterface": "default",
+        "fsType": "ext4",
+        "readOnly": true,
+        "portals": ["192.0.2.2:3260"],
+        "chapAuthDiscovery": true,
+        "chapAuthSession": true,
+        "secretRef": {
+          "name": "credentials",
+          "namespace": "default"
+        },
+        "initiatorName": "iqn.2026-01.org.example:client"
+      }
+    },
+    "status": {
+      "phase": "Bound",
+      "message": ""
+    }
+  },
+  "events": []
+}

@@ -1,0 +1,31 @@
+Name:         demo
+Namespace:    default
+Labels:       app=demo
+              z=last
+Annotations:  long:
+                ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé...
+              multiline:
+                one
+                two
+
+Data
+====
+hello:
+----
+world
+second  column\r^[
+
+z:
+----
+last
+
+
+BinaryData
+====
+bytes: 3 bytes
+
+Events:
+  Type     Reason   Age                            From                 Message
+  ----     ------   ----                           ----                 -------
+  Normal   Updated  <unknown> (x2 over <unknown>)  controller           data.hello: applied\r^[
+  Warning  Retried  <invalid> (x3 over <invalid>)  fallback-controller  retry

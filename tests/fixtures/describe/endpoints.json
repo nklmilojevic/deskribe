@@ -1,0 +1,43 @@
+{
+  "plural": "endpoints",
+  "object": {
+    "apiVersion": "v1",
+    "kind": "Endpoints",
+    "metadata": {
+      "name": "demo",
+      "uid": "demo-uid",
+      "creationTimestamp": "2026-01-01T00:00:00Z",
+      "namespace": "default"
+    },
+    "subsets": [
+      {
+        "addresses": [
+          {
+            "ip": "10.0.0.1"
+          },
+          {
+            "ip": "10.0.0.2"
+          }
+        ],
+        "notReadyAddresses": [
+          {
+            "ip": "10.0.0.3"
+          }
+        ],
+        "ports": [
+          {
+            "name": "http",
+            "port": 8080,
+            "protocol": "TCP"
+          },
+          {
+            "port": 9090,
+            "protocol": "TCP"
+          }
+        ]
+      },
+      {}
+    ]
+  },
+  "events": []
+}

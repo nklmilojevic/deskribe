@@ -1,0 +1,10 @@
+Name:         demo
+Labels:       <none>
+Annotations:  <none>
+CIDRs:        10.96.0.0/12, fd00::/108
+Status:
+Conditions:
+  Type   Status  LastTransitionTime               Reason  Message
+  ----   ------  ------------------               ------  -------
+  Ready  True    Thu, 01 Jan 2026 00:00:00 +0000  Ready   Allocated
+Events:  <none>

@@ -1,0 +1,24 @@
+Name:         demo
+Namespace:    default
+Labels:       <none>
+Annotations:  <none>
+AddressType:  IPv4
+Ports:
+  Name  Port  Protocol
+  ----  ----  --------
+  http  8080  TCP
+Endpoints:
+  - Addresses:  10.0.0.1
+    Conditions:
+      Ready:    true
+    Hostname:   demo
+    TargetRef:  Pod/pod
+    NodeName:   node
+    Zone:       west
+  - Addresses:  10.0.0.2
+    Conditions:
+      Ready:   <unset>
+    Hostname:  <unset>
+    NodeName:  <unset>
+    Zone:      <unset>
+Events:        <none>

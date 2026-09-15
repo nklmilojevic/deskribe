@@ -1,0 +1,56 @@
+{
+  "plural": "jobs",
+  "object": {
+    "apiVersion": "batch/v1",
+    "kind": "Job",
+    "metadata": {
+      "name": "demo",
+      "namespace": "default",
+      "uid": "demo-uid",
+      "labels": { "app": "batch" }
+    },
+    "spec": {
+      "parallelism": 2,
+      "completions": 5,
+      "completionMode": "Indexed",
+      "suspend": false,
+      "backoffLimit": 6,
+      "ttlSecondsAfterFinished": 60,
+      "activeDeadlineSeconds": 300,
+      "selector": { "matchLabels": { "job-name": "demo" } },
+      "template": {
+        "metadata": {
+          "labels": { "app": "batch", "job-name": "demo" },
+          "annotations": { "test": "yes" }
+        },
+        "spec": {
+          "containers": [
+            {
+              "name": "worker",
+              "image": "example.invalid/worker",
+              "env": [
+                {
+                  "name": "POD_NAME",
+                  "valueFrom": { "fieldRef": { "apiVersion": "v1", "fieldPath": "metadata.name" } }
+                }
+              ]
+            }
+          ],
+          "restartPolicy": "Never",
+          "nodeSelector": { "zone": "west" },
+          "tolerations": [{ "operator": "Exists" }]
+        }
+      }
+    },
+    "status": {
+      "startTime": "2026-01-01T00:00:00Z",
+      "completionTime": "2026-01-01T00:00:00Z",
+      "active": 0,
+      "ready": 0,
+      "succeeded": 5,
+      "failed": 1,
+      "completedIndexes": "0-4"
+    }
+  },
+  "events": []
+}

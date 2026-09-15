@@ -1,0 +1,11 @@
+Name:         demo
+Labels:       app=test
+Annotations:  <none>
+Role:
+  Kind:  ClusterRole
+  Name:  view
+Subjects:
+  Kind            Name    Namespace
+  ----            ----    ---------
+  ServiceAccount  reader  default
+  User            alice   

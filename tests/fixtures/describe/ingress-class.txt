@@ -1,0 +1,9 @@
+Name:         demo
+Labels:       <none>
+Annotations:  <none>
+Controller:   example.com/ingress
+Parameters:
+  APIGroup:  example.com
+  Kind:      Settings
+  Name:      config
+Events:      <none>

@@ -1,0 +1,22 @@
+Name:          demo
+Namespace:     default
+StorageClass:  fast
+Status:        Bound
+Volume:        pv-demo
+Labels:        app=web
+Annotations:   <none>
+Finalizers:    [kubernetes.io/pvc-protection]
+Capacity:      1Gi
+Access Modes:  RWO,RWX
+VolumeMode:    Filesystem
+DataSource:
+  APIGroup:  snapshot.storage.k8s.io
+  Kind:      VolumeSnapshot
+  Name:      backup
+Used By:     consumer
+             owner
+Conditions:
+  Type       Status  LastProbeTime                     LastTransitionTime                Reason               Message
+  ----       ------  -----------------                 ------------------                ------               -------
+  Resizing   True    Thu, 01 Jan 2026 00:00:00 +0000   Thu, 01 Jan 2026 00:00:00 +0000   ExpansionRequested   Expansion is pending
+Events:      <none>

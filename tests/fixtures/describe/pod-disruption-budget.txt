@@ -1,0 +1,10 @@
+Name:           demo
+Namespace:      default
+Min available:  50%
+Selector:       app=web,!maintenance,tier in (backend,frontend)
+Status:
+    Allowed disruptions:  1
+    Current:              3
+    Desired:              2
+    Total:                4
+Events:                   <none>
