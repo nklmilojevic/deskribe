@@ -64,17 +64,17 @@ pub(crate) fn label_section(meta: &ObjectMeta, prefix: &str) -> String {
 pub(crate) fn annotation_section(meta: &ObjectMeta, prefix: &str) -> String {
     let empty = BTreeMap::new();
     let mut out = format!("{prefix}Annotations:\t");
-    let annotations: Vec<_> = meta
+    let mut annotations = meta
         .annotations
         .as_ref()
         .unwrap_or(&empty)
         .iter()
         .filter(|(key, _)| key.as_str() != "kubectl.kubernetes.io/last-applied-configuration")
-        .collect();
-    if annotations.is_empty() {
+        .peekable();
+    if annotations.peek().is_none() {
         out.push_str("<none>\n");
     }
-    for (i, (key, value)) in annotations.into_iter().enumerate() {
+    for (i, (key, value)) in annotations.enumerate() {
         if i > 0 {
             out.push('\t');
         }

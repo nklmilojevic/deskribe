@@ -147,19 +147,4 @@ impl ResourceKind {
             | Self::Generic => EventPolicy::Optional,
         }
     }
-
-    pub(crate) fn prefetch_events(self) -> bool {
-        matches!(self.events(), EventPolicy::Optional | EventPolicy::Required)
-            && !matches!(
-                self,
-                Self::Ingress
-                    | Self::Service
-                    | Self::PersistentVolumeClaim
-                    | Self::ReplicationController
-                    | Self::ReplicaSet
-                    | Self::DaemonSet
-                    | Self::StatefulSet
-                    | Self::Deployment
-            )
-    }
 }

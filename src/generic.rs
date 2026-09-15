@@ -13,69 +13,139 @@ use std::fmt::Write;
 
 pub(crate) fn render(object: &DynamicObject, events: Option<&[Event]>, now: Timestamp) -> String {
     let mut out = metadata(&object.metadata);
-    let value = serde_json::to_value(object).expect("DynamicObject is JSON serializable");
-    content(&mut out, &value, 0, "");
+    // `DynamicObject::data` already is the JSON body. Serializing the complete
+    // object deep-copied every custom-resource field merely to add type and
+    // metadata back at the top level. Merge those three small fields into the
+    // sorted traversal while borrowing the potentially large body in place.
+    let metadata = serde_json::to_value(&object.metadata).expect("ObjectMeta is JSON serializable");
+    let mut keys: Vec<_> = object
+        .data
+        .as_object()
+        .into_iter()
+        .flatten()
+        .map(|(key, _)| key.as_str())
+        .filter(|key| !matches!(*key, "apiVersion" | "kind" | "metadata"))
+        .collect();
+    if object.types.is_some() {
+        keys.extend(["apiVersion", "kind"]);
+    }
+    keys.push("metadata");
+    keys.sort_unstable();
+    for key in keys {
+        match key {
+            "apiVersion" => writeln!(
+                out,
+                "API Version:\t{}",
+                object
+                    .types
+                    .as_ref()
+                    .map(|types| types.api_version.as_str())
+                    .unwrap_or_default()
+            )
+            .unwrap(),
+            "kind" => writeln!(
+                out,
+                "Kind:\t{}",
+                object
+                    .types
+                    .as_ref()
+                    .map(|types| types.kind.as_str())
+                    .unwrap_or_default()
+            )
+            .unwrap(),
+            "metadata" => field(&mut out, key, &metadata, 0, false),
+            _ => field(&mut out, key, &object.data[key], 0, false),
+        }
+    }
     with_events(out, events, now)
 }
 
-fn content(out: &mut String, value: &Value, level: usize, prefix: &str) {
+fn content(out: &mut String, value: &Value, level: usize, omit_metadata_fields: bool) {
     let Some(fields) = value.as_object() else {
         return;
     };
     let mut keys: Vec<_> = fields.keys().collect();
     keys.sort();
     for key in keys {
-        let path = format!("{prefix}.{key}");
-        if matches!(
-            path.as_str(),
-            ".metadata.managedFields"
-                | ".metadata.name"
-                | ".metadata.namespace"
-                | ".metadata.labels"
-                | ".metadata.annotations"
-        ) {
-            continue;
+        field(out, key, &fields[key], level, omit_metadata_fields);
+    }
+}
+
+fn field(out: &mut String, key: &str, value: &Value, level: usize, omit_metadata_fields: bool) {
+    if omit_metadata_fields
+        && matches!(
+            key,
+            "managedFields" | "name" | "namespace" | "labels" | "annotations"
+        )
+    {
+        return;
+    }
+    let indent = Indent(level);
+    let label = smart_label(key);
+    match value {
+        Value::Object(_) => {
+            writeln!(out, "{indent}{label}:").unwrap();
+            content(out, value, level + 1, level == 0 && key == "metadata");
         }
-        let indent = "  ".repeat(level);
-        let label = smart_label(key);
-        match &fields[key] {
-            Value::Object(_) => {
-                writeln!(out, "{indent}{label}:").unwrap();
-                content(out, &fields[key], level + 1, &path);
-            }
-            Value::Array(items) => {
-                writeln!(out, "{indent}{label}:").unwrap();
-                for item in items {
-                    if item.is_object() {
-                        content(out, item, level + 1, &path);
-                    } else {
-                        writeln!(out, "{indent}  {}", go_value(item)).unwrap();
-                    }
+        Value::Array(items) => {
+            writeln!(out, "{indent}{label}:").unwrap();
+            for item in items {
+                if item.is_object() {
+                    content(out, item, level + 1, false);
+                } else {
+                    write!(out, "{indent}  ").unwrap();
+                    write_go_value(out, item);
+                    out.push('\n');
                 }
             }
-            value => writeln!(out, "{indent}{label}:\t{}", go_value(value)).unwrap(),
+        }
+        value => {
+            write!(out, "{indent}{label}:\t").unwrap();
+            write_go_value(out, value);
+            out.push('\n');
         }
     }
 }
 
-fn go_value(value: &Value) -> String {
+fn write_go_value(out: &mut String, value: &Value) {
     match value {
-        Value::Null => "<nil>".into(),
-        Value::String(s) => s.clone(),
-        Value::Array(a) => format!("[{}]", a.iter().map(go_value).collect::<Vec<_>>().join(" ")),
-        Value::Object(m) => {
-            let mut pairs: Vec<_> = m.iter().collect();
-            pairs.sort_by_key(|(k, _)| *k);
-            format!(
-                "map[{}]",
-                pairs
-                    .into_iter()
-                    .map(|(k, v)| format!("{k}:{}", go_value(v)))
-                    .collect::<Vec<_>>()
-                    .join(" ")
-            )
+        Value::Null => out.push_str("<nil>"),
+        Value::String(value) => out.push_str(value),
+        Value::Array(values) => {
+            out.push('[');
+            for (index, value) in values.iter().enumerate() {
+                if index != 0 {
+                    out.push(' ');
+                }
+                write_go_value(out, value);
+            }
+            out.push(']');
         }
-        _ => value.to_string(),
+        Value::Object(values) => {
+            let mut pairs: Vec<_> = values.iter().collect();
+            pairs.sort_by_key(|(key, _)| *key);
+            out.push_str("map[");
+            for (index, (key, value)) in pairs.into_iter().enumerate() {
+                if index != 0 {
+                    out.push(' ');
+                }
+                write!(out, "{key}:").unwrap();
+                write_go_value(out, value);
+            }
+            out.push(']');
+        }
+        value => write!(out, "{value}").unwrap(),
+    }
+}
+
+struct Indent(usize);
+
+impl std::fmt::Display for Indent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for _ in 0..self.0 {
+            f.write_str("  ")?;
+        }
+        Ok(())
     }
 }
 

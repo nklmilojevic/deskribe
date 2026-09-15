@@ -6,7 +6,7 @@
 use crate::events::with_events;
 use crate::json::{integer, items, text};
 use crate::metadata::metadata;
-use crate::time::value_timestamp;
+use crate::time::optional_timestamp;
 use k8s_openapi::api::core::v1::Event;
 use k8s_openapi::jiff::Timestamp;
 use k8s_openapi::jiff::tz::TimeZone;
@@ -36,8 +36,12 @@ pub(crate) fn render(
     writeln!(
         out,
         "CreationTimestamp:\t{}\nReference:\t{}/{}",
-        value_timestamp(
-            &serde_json::to_value(&object.metadata.creation_timestamp).unwrap_or_default(),
+        optional_timestamp(
+            object
+                .metadata
+                .creation_timestamp
+                .as_ref()
+                .map(|time| time.0),
             zone
         ),
         text(&spec["scaleTargetRef"]["kind"]),

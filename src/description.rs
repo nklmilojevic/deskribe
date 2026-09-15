@@ -9,6 +9,7 @@ use crate::{
     rbac, scheduling, service_account, storage,
 };
 use k8s_openapi::api::core::v1::{ConfigMap, Event, Secret};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use k8s_openapi::jiff::Timestamp;
 use k8s_openapi::jiff::tz::TimeZone;
 use kube::api::DynamicObject;
@@ -80,6 +81,38 @@ pub(crate) enum Snapshot {
     PriorityClass,
     Generic,
     PodGetFailure(String),
+}
+
+/// Build a typed resource from a dynamic one without a serialization round trip.
+///
+/// `DynamicObject` already keeps metadata typed and the remaining top-level
+/// fields as JSON, so the body deserializes straight out of `data` and metadata
+/// is moved across. Re-serializing the whole object to a `Value` first copied
+/// every ConfigMap key and every Secret blob for nothing.
+fn typed<T>(object: &DynamicObject) -> Option<T>
+where
+    T: for<'de> serde::Deserialize<'de> + Metadata,
+{
+    let mut value = T::deserialize(&object.data).ok()?;
+    *value.meta_mut() = object.metadata.clone();
+    Some(value)
+}
+
+/// The `metadata` field of a typed resource, which `data` never carries.
+trait Metadata {
+    fn meta_mut(&mut self) -> &mut ObjectMeta;
+}
+
+impl Metadata for Secret {
+    fn meta_mut(&mut self) -> &mut ObjectMeta {
+        &mut self.metadata
+    }
+}
+
+impl Metadata for ConfigMap {
+    fn meta_mut(&mut self) -> &mut ObjectMeta {
+        &mut self.metadata
+    }
 }
 
 impl Description {
@@ -185,17 +218,11 @@ impl Description {
             Snapshot::Role | Snapshot::ClusterRole => rbac::render(object),
             Snapshot::RoleBinding | Snapshot::ClusterRoleBinding => rbac::render_binding(object),
             Snapshot::Secret => {
-                let value: Secret = serde_json::from_value(
-                    serde_json::to_value(object).map_err(|_| "invalid describe object")?,
-                )
-                .map_err(|_| "invalid Secret response")?;
+                let value = typed::<Secret>(object).ok_or("invalid Secret response")?;
                 render_secret(&value)
             }
             Snapshot::ConfigMap => {
-                let value: ConfigMap = serde_json::from_value(
-                    serde_json::to_value(object).map_err(|_| "invalid describe object")?,
-                )
-                .map_err(|_| "invalid ConfigMap response")?;
+                let value = typed::<ConfigMap>(object).ok_or("invalid ConfigMap response")?;
                 render_config_map(&value, events.unwrap_or_default(), now)
             }
         };
