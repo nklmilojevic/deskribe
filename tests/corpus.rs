@@ -120,6 +120,9 @@ async fn public_gather_and_render_match_regression_corpus() {
         let fixture: Value =
             serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
         let output = render_fixture(&fixture).await;
+        if std::env::var("DESKRIBE_UPDATE_FIXTURES").as_deref() == Ok("1") {
+            std::fs::write(path.with_extension("txt"), &output).unwrap();
+        }
         assert_eq!(
             output,
             std::fs::read_to_string(path.with_extension("txt")).unwrap(),
@@ -128,6 +131,9 @@ async fn public_gather_and_render_match_regression_corpus() {
         );
         assert!(!output.contains("SYNTHETIC-DO-NOT-PRINT"));
         assert!(!output.contains("MUST NOT SHOW"));
+        if path.file_stem().unwrap() == "secret-token" {
+            assert!(output.contains("SYNTHETIC-TOKEN-NOT-A-CREDENTIAL"));
+        }
     }
 }
 

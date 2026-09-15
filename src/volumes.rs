@@ -3,10 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // Adapted from kubectl v0.35.1 pkg/describe/describe.go. See LICENSE-APACHE.
 
+use crate::json::{items, text};
+use crate::metadata::{annotation_section, label_section};
 use serde_json::Value;
 use std::fmt::Write;
 
-pub(super) fn render(out: &mut String, volumes: &[Value], space: &str) {
+pub(crate) fn render(out: &mut String, volumes: &[Value], space: &str) {
     if volumes.is_empty() {
         writeln!(out, "{space}Volumes:\t<none>").unwrap();
         return;
@@ -36,7 +38,7 @@ enum Format {
 use Format::*;
 type Field = (&'static str, &'static str, Format);
 
-pub(super) fn source(out: &mut String, volume: &Value, persistent: bool) {
+pub(crate) fn source(out: &mut String, volume: &Value, persistent: bool) {
     let (key, description, fields): (&str, &str, &[Field]) = if !volume["hostPath"].is_null() {
         (
             "hostPath",
@@ -411,13 +413,9 @@ pub(super) fn source(out: &mut String, volume: &Value, persistent: bool) {
                     text(&spec["volumeName"])
                 )
                 .unwrap();
-                let header = super::metadata_header(&meta, false);
-                for line in header
-                    .split_once('\n')
-                    .map(|(_, tail)| tail)
-                    .unwrap_or_default()
-                    .lines()
-                {
+                let mut header = label_section(&meta, "");
+                header.push_str(&annotation_section(&meta, ""));
+                for line in header.lines() {
                     writeln!(out, "    {}", line.replace('\t', "\t    ")).unwrap();
                 }
                 out.push_str("    Capacity:\t\n    Access Modes:\t\n");
@@ -533,12 +531,6 @@ pub(super) fn source(out: &mut String, volume: &Value, persistent: bool) {
     }
 }
 
-fn text(v: &Value) -> &str {
-    v.as_str().unwrap_or_default()
-}
-fn items(v: &Value) -> &[Value] {
-    v.as_array().map(Vec::as_slice).unwrap_or_default()
-}
 fn formatted(v: &Value, format: Format, persistent: bool) -> String {
     match format {
         Text => text(v).into(),

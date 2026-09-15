@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Exact nanounit arithmetic for resource summaries and downward-API divisors.
 
-pub(super) fn parse(input: &str) -> Option<i128> {
+pub(crate) fn parse(input: &str) -> Option<i128> {
     let split = input
         .char_indices()
         .find(|&(i, c)| i > 0 && !(c.is_ascii_digit() || c == '.'))
@@ -53,7 +53,7 @@ pub(super) fn parse(input: &str) -> Option<i128> {
     }
 }
 
-pub(super) fn canonical(input: &str) -> String {
+pub(crate) fn canonical(input: &str) -> String {
     let Some(nanos) = parse(input) else {
         return input.into();
     };
@@ -91,7 +91,7 @@ pub(super) fn canonical(input: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{canonical, parse};
     #[test]
     fn exact_resources_and_subnanounit_rounding() {
         for (input, expected) in [

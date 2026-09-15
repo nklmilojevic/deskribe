@@ -4,18 +4,20 @@
 // Adapted from kubectl v0.37.0 pkg/describe/describe.go and pkg/util/deployment.
 // See LICENSE-APACHE.
 
-use super::*;
+use crate::api::list_objects;
+use crate::events::with_events;
+use crate::json::{integer, items, text};
+use crate::metadata::{annotation_section, identity, label_section};
+use crate::time::value_timestamp;
+use crate::{pod, policy, quantity};
+use k8s_openapi::api::core::v1::Event;
+use k8s_openapi::jiff::Timestamp;
 use k8s_openapi::jiff::tz::TimeZone;
+use kube::Client;
+use kube::api::{ApiResource, DynamicObject, ListParams};
 use serde_json::Value;
-fn text(v: &Value) -> &str {
-    v.as_str().unwrap_or_default()
-}
-fn items(v: &Value) -> &[Value] {
-    v.as_array().map(Vec::as_slice).unwrap_or_default()
-}
-fn integer(v: &Value) -> i64 {
-    v.as_i64().unwrap_or_default()
-}
+use std::fmt::Write;
+
 fn scalar(v: &Value) -> String {
     v.as_str().map(str::to_owned).unwrap_or_else(|| {
         if v.is_null() {
@@ -24,15 +26,6 @@ fn scalar(v: &Value) -> String {
             v.to_string()
         }
     })
-}
-
-pub(super) fn supports(ar: &ApiResource) -> bool {
-    (ar.group.is_empty() && ar.kind == "ReplicationController")
-        || (ar.group == "apps"
-            && matches!(
-                ar.kind.as_str(),
-                "ReplicaSet" | "DaemonSet" | "StatefulSet" | "Deployment"
-            ))
 }
 
 fn selector(object: &DynamicObject, kind: &str) -> String {
@@ -57,7 +50,7 @@ fn labels(value: &Value) -> String {
     }
 }
 
-pub(super) async fn related(
+pub(crate) async fn related(
     client: Client,
     object: &DynamicObject,
     kind: &str,
@@ -87,7 +80,7 @@ pub(super) async fn related(
     .map_err(|e| e.to_string())
 }
 
-pub(super) fn render(
+pub(crate) fn render(
     object: &DynamicObject,
     kind: &str,
     related: Result<&[DynamicObject], &str>,
@@ -107,7 +100,7 @@ pub(super) fn render(
         return Err("invalid controller label selector".into());
     }
     let raw_selector = if selected == "<none>" { "" } else { &selected };
-    let mut out = metadata(&object.metadata);
+    let mut out = identity(&object.metadata, true);
     let created = object
         .metadata
         .creation_timestamp
@@ -119,7 +112,7 @@ pub(super) fn render(
         writeln!(
             prefix,
             "CreationTimestamp:\t{}",
-            containers::timestamp(&created, zone)
+            value_timestamp(&created, zone)
         )
         .unwrap();
     }
@@ -143,7 +136,9 @@ pub(super) fn render(
         )
         .unwrap();
     }
-    out = out.replacen("Labels:", &format!("{prefix}Labels:"), 1);
+    out.push_str(&prefix);
+    out.push_str(&label_section(&object.metadata, ""));
+    out.push_str(&annotation_section(&object.metadata, ""));
     if kind == "ReplicaSet"
         && let Some(owner) = object
             .metadata
@@ -257,7 +252,7 @@ pub(super) fn render(
             }
         }
     }
-    workloads::template(&mut out, &spec["template"], zone);
+    pod::template(&mut out, &spec["template"], zone);
     if matches!(kind, "Deployment" | "ReplicaSet" | "ReplicationController")
         && !items(&status["conditions"]).is_empty()
     {

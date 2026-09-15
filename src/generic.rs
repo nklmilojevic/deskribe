@@ -3,10 +3,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // Adapted from kubectl v0.37.0 pkg/describe/describe.go. See LICENSE-APACHE.
 
-use super::*;
+use crate::events::with_events;
+use crate::metadata::metadata;
+use k8s_openapi::api::core::v1::Event;
+use k8s_openapi::jiff::Timestamp;
+use kube::api::DynamicObject;
 use serde_json::Value;
+use std::fmt::Write;
 
-pub(super) fn render(object: &DynamicObject, events: Option<&[Event]>, now: Timestamp) -> String {
+pub(crate) fn render(object: &DynamicObject, events: Option<&[Event]>, now: Timestamp) -> String {
     let mut out = metadata(&object.metadata);
     let value = serde_json::to_value(object).expect("DynamicObject is JSON serializable");
     content(&mut out, &value, 0, "");
@@ -134,7 +139,8 @@ fn smart_label(field: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{render, smart_label};
+    use k8s_openapi::jiff::Timestamp;
 
     #[test]
     fn labels_preserve_special_fields_and_split_acronyms() {

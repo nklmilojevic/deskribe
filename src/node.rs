@@ -4,23 +4,29 @@
 // Adapted from kubectl v0.37.0 pkg/describe/describe.go and component-helpers/resource.
 // See LICENSE-APACHE.
 
-use super::*;
+use crate::api::{fetch_events, list_objects};
+use crate::events::with_events;
+use crate::json::{items, text};
+use crate::metadata::{annotation_section, identity, label_section};
+use crate::quantity;
+use crate::time::{age, value_timestamp};
+use k8s_openapi::api::core::v1::Event;
+use k8s_openapi::jiff::Timestamp;
 use k8s_openapi::jiff::tz::TimeZone;
+use kube::Client;
+use kube::api::{Api, ApiResource, DynamicObject, ListParams};
 use serde_json::Value;
-fn text(v: &Value) -> &str {
-    v.as_str().unwrap_or_default()
-}
-fn items(v: &Value) -> &[Value] {
-    v.as_array().map(Vec::as_slice).unwrap_or_default()
-}
-pub(super) struct Related {
+use std::collections::BTreeMap;
+use std::fmt::Write;
+
+pub(crate) struct Related {
     pub pods: Option<Vec<DynamicObject>>,
     pub lease: Result<DynamicObject, String>,
     pub events: Option<Vec<Event>>,
     pub resource_slices: Vec<DynamicObject>,
 }
 
-pub(super) async fn related(client: Client, object: &DynamicObject) -> Result<Related, String> {
+pub(crate) async fn related(client: Client, object: &DynamicObject) -> Result<Related, String> {
     let name = object.metadata.name.as_deref().unwrap_or_default();
     let pod_ar = ApiResource::from_gvk(&kube::core::GroupVersionKind::gvk("", "v1", "Pod"));
     let lease_ar = ApiResource::from_gvk(&kube::core::GroupVersionKind::gvk(
@@ -77,7 +83,7 @@ pub(super) async fn related(client: Client, object: &DynamicObject) -> Result<Re
     })
 }
 
-pub(super) fn render(
+pub(crate) fn render(
     object: &DynamicObject,
     related: &Related,
     now: Timestamp,
@@ -85,8 +91,7 @@ pub(super) fn render(
 ) -> String {
     let spec = &object.data["spec"];
     let status = &object.data["status"];
-    let header = metadata_header(&object.metadata, false);
-    let (name, tail) = header.split_once('\n').unwrap();
+    let mut out = identity(&object.metadata, false);
     let mut roles = std::collections::BTreeSet::new();
     for (k, v) in object.metadata.labels.iter().flatten() {
         if let Some(role) = k.strip_prefix("node-role.kubernetes.io/")
@@ -98,18 +103,22 @@ pub(super) fn render(
             roles.insert(v);
         }
     }
-    let mut out = format!(
-        "{name}\nRoles:\t{}\n{tail}",
+    writeln!(
+        out,
+        "Roles:\t{}",
         if roles.is_empty() {
             "<none>".into()
         } else {
             roles.into_iter().collect::<Vec<_>>().join(",")
         }
-    );
+    )
+    .unwrap();
+    out.push_str(&label_section(&object.metadata, ""));
+    out.push_str(&annotation_section(&object.metadata, ""));
     writeln!(
         out,
         "CreationTimestamp:\t{}",
-        containers::timestamp(
+        value_timestamp(
             &serde_json::to_value(&object.metadata.creation_timestamp).unwrap_or_default(),
             zone
         )
@@ -162,7 +171,7 @@ pub(super) fn render(
                     if spec[field].is_null() {
                         "<unset>".into()
                     } else {
-                        containers::timestamp(&spec[field], zone)
+                        value_timestamp(&spec[field], zone)
                     }
                 )
                 .unwrap();
@@ -181,8 +190,8 @@ pub(super) fn render(
                 "  {} \t{} \t{} \t{} \t{} \t{}",
                 text(&c["type"]),
                 text(&c["status"]),
-                containers::timestamp(&c["lastHeartbeatTime"], zone),
-                containers::timestamp(&c["lastTransitionTime"], zone),
+                value_timestamp(&c["lastHeartbeatTime"], zone),
+                value_timestamp(&c["lastTransitionTime"], zone),
                 text(&c["reason"]),
                 text(&c["message"])
             )
@@ -281,7 +290,7 @@ fn resource_slices(out: &mut String, slices: &[DynamicObject]) {
     }
 }
 
-pub(super) fn pod_level_resource(name: &str) -> bool {
+pub(crate) fn pod_level_resource(name: &str) -> bool {
     matches!(name, "cpu" | "memory") || name.starts_with("hugepages-")
 }
 
@@ -561,7 +570,8 @@ fn resources(out: &mut String, pods: &[DynamicObject], node: &DynamicObject, now
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{pod_resources, resource_slices};
+    use kube::api::DynamicObject;
     use serde_json::json;
 
     #[test]

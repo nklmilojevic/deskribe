@@ -3,19 +3,20 @@
 // SPDX-License-Identifier: Apache-2.0
 // Adapted from kubectl v0.35.1 pkg/describe/describe.go. See LICENSE-APACHE.
 
-use super::*;
-use futures_util::{StreamExt, stream};
+use crate::events::with_events;
+use crate::json::{items, text};
+use crate::metadata::{annotation_section, identity, label_section};
+use crate::networking::service;
+use k8s_openapi::api::core::v1::Event;
+use k8s_openapi::jiff::Timestamp;
+use kube::Client;
+use kube::api::{Api, ApiResource, DynamicObject};
 use serde_json::Value;
-fn text(v: &Value) -> &str {
-    v.as_str().unwrap_or_default()
-}
-fn items(v: &Value) -> &[Value] {
-    v.as_array().map(Vec::as_slice).unwrap_or_default()
-}
-pub(super) type Backends = BTreeMap<String, Result<(DynamicObject, Vec<DynamicObject>), String>>;
-pub(super) fn supports(ar: &ApiResource) -> bool {
-    matches!(ar.group.as_str(), "networking.k8s.io" | "extensions") && ar.kind == "Ingress"
-}
+use std::collections::BTreeMap;
+use std::fmt::Write;
+
+use futures_util::{StreamExt, stream};
+pub(crate) type Backends = BTreeMap<String, Result<(DynamicObject, Vec<DynamicObject>), String>>;
 
 fn default_backend(spec: &Value) -> &Value {
     spec.get("defaultBackend").unwrap_or(&spec["backend"])
@@ -27,7 +28,7 @@ fn service_name(backend: &Value) -> Option<&str> {
         .or_else(|| backend["serviceName"].as_str())
 }
 
-pub(super) async fn related(client: Client, object: &DynamicObject) -> Backends {
+pub(crate) async fn related(client: Client, object: &DynamicObject) -> Backends {
     let mut names = std::collections::BTreeSet::new();
     let spec = &object.data["spec"];
     if let Some(name) = service_name(default_backend(spec)) {
@@ -68,16 +69,15 @@ fn error(e: kube::Error) -> String {
     }
 }
 
-pub(super) fn render(
+pub(crate) fn render(
     object: &DynamicObject,
     backends: &Backends,
     events: Option<&[Event]>,
     now: Timestamp,
 ) -> String {
     let spec = &object.data["spec"];
-    let metadata = metadata_header(&object.metadata, false);
-    let (header, annotations) = metadata.split_once("Annotations:\t").unwrap();
-    let mut out = header.to_owned();
+    let mut out = identity(&object.metadata, false);
+    out.push_str(&label_section(&object.metadata, ""));
     let addresses: std::collections::BTreeSet<_> =
         items(&object.data["status"]["loadBalancer"]["ingress"])
             .iter()
@@ -158,7 +158,7 @@ pub(super) fn render(
     if count == 0 {
         writeln!(out, "  *\t*\t{default}").unwrap();
     }
-    write!(out, "Annotations:\t{annotations}").unwrap();
+    out.push_str(&annotation_section(&object.metadata, ""));
     with_events(out, events, now)
 }
 

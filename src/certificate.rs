@@ -3,12 +3,19 @@
 // SPDX-License-Identifier: Apache-2.0
 // Adapted from kubectl v0.35.1 pkg/describe/describe.go. See LICENSE-APACHE.
 
-use super::*;
-use base64::Engine;
+use crate::events::with_events;
+use crate::time::{human_duration, value_timestamp};
+use k8s_openapi::api::core::v1::Event;
+use k8s_openapi::jiff::Timestamp;
 use k8s_openapi::jiff::tz::TimeZone;
+use kube::api::DynamicObject;
+use std::collections::BTreeMap;
+use std::fmt::Write;
+
+use base64::Engine;
 use x509_parser::{extensions::GeneralName, prelude::*};
 
-pub(super) fn render(
+pub(crate) fn render(
     object: &DynamicObject,
     events: Option<&[Event]>,
     now: Timestamp,
@@ -45,7 +52,7 @@ pub(super) fn render(
         object.metadata.name.as_deref().unwrap_or_default(),
         inline(&object.metadata.labels),
         inline(&object.metadata.annotations),
-        containers::timestamp(
+        value_timestamp(
             &serde_json::to_value(&object.metadata.creation_timestamp).unwrap_or_default(),
             zone
         ),

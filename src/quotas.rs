@@ -3,30 +3,24 @@
 // SPDX-License-Identifier: Apache-2.0
 // Adapted from kubectl v0.35.1 pkg/describe/describe.go. See LICENSE-APACHE.
 
-use super::*;
+use crate::api::list_objects;
+use crate::format::tabbed;
+use crate::json::{items, text};
+use crate::metadata::metadata_header;
+use crate::time::value_timestamp;
 use k8s_openapi::jiff::tz::TimeZone;
+use kube::Client;
+use kube::api::{ApiResource, DynamicObject, ListParams};
 use serde_json::Value;
-fn text(v: &Value) -> &str {
-    v.as_str().unwrap_or_default()
-}
-fn items(v: &Value) -> &[Value] {
-    v.as_array().map(Vec::as_slice).unwrap_or_default()
-}
+use std::fmt::Write;
+
 fn quantity(v: &Value, default: &str) -> String {
     v.as_str()
-        .map(super::quantity::canonical)
+        .map(crate::quantity::canonical)
         .unwrap_or(default.into())
 }
 
-pub(super) fn supports(ar: &ApiResource) -> bool {
-    ar.group.is_empty()
-        && matches!(
-            ar.kind.as_str(),
-            "Namespace" | "ResourceQuota" | "LimitRange"
-        )
-}
-
-pub(super) async fn related(
+pub(crate) async fn related(
     client: Client,
     object: &DynamicObject,
 ) -> Result<(Option<Vec<DynamicObject>>, Option<Vec<DynamicObject>>), String> {
@@ -49,7 +43,7 @@ pub(super) async fn related(
     Ok((accept(quotas)?, accept(limits)?))
 }
 
-pub(super) fn render(
+pub(crate) fn render(
     object: &DynamicObject,
     kind: &str,
     quotas: Option<&[DynamicObject]>,
@@ -69,7 +63,7 @@ pub(super) fn render(
                     "  {}\t{}\t{}\t{}\t{}",
                     text(&c["type"]),
                     text(&c["status"]),
-                    containers::timestamp(&c["lastTransitionTime"], zone),
+                    value_timestamp(&c["lastTransitionTime"], zone),
                     text(&c["reason"]),
                     text(&c["message"])
                 )
@@ -164,7 +158,7 @@ fn quota(out: &mut String, value: &Value, nested: bool) {
         let used = &value["status"]["used"][name];
         let mut used_text = quantity(used, "0");
         if !nested && text(capacity).ends_with('i') && !text(used).ends_with('i') {
-            let nanos = super::quantity::parse(text(used)).unwrap_or_default();
+            let nanos = crate::quantity::parse(text(used)).unwrap_or_default();
             let mut units = (nanos + 999_999_999) / 1_000_000_000;
             let suffixes = ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei"];
             let mut index = 0;
@@ -174,9 +168,9 @@ fn quota(out: &mut String, value: &Value, nested: bool) {
             }
             used_text = format!("{units}{}", suffixes[index]);
         } else if !nested && !text(capacity).ends_with('i') && text(used).ends_with('i') {
-            let units = (super::quantity::parse(text(used)).unwrap_or_default() + 999_999_999)
+            let units = (crate::quantity::parse(text(used)).unwrap_or_default() + 999_999_999)
                 / 1_000_000_000;
-            used_text = super::quantity::canonical(&units.to_string());
+            used_text = crate::quantity::canonical(&units.to_string());
         }
         writeln!(
             out,

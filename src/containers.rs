@@ -3,21 +3,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // Adapted from kubectl v0.35.1 pkg/describe/describe.go. See LICENSE-APACHE.
 
-use super::*;
+use crate::json::{integer, items, text};
+use crate::time::value_timestamp;
 use k8s_openapi::jiff::tz::TimeZone;
+use kube::api::DynamicObject;
 use serde_json::Value;
+use std::fmt::Write;
 
-fn text(v: &Value) -> &str {
-    v.as_str().unwrap_or_default()
-}
-fn items(v: &Value) -> &[Value] {
-    v.as_array().map(Vec::as_slice).unwrap_or_default()
-}
 fn boolean(v: &Value) -> bool {
     v.as_bool().unwrap_or_default()
-}
-fn integer(v: &Value) -> i64 {
-    v.as_i64().unwrap_or_default()
 }
 fn scalar(v: &Value) -> String {
     v.as_str().map(str::to_owned).unwrap_or_else(|| {
@@ -29,19 +23,7 @@ fn scalar(v: &Value) -> String {
     })
 }
 
-pub(super) fn timestamp(value: &Value, zone: &TimeZone) -> String {
-    text(value)
-        .parse::<Timestamp>()
-        .ok()
-        .map(|t| {
-            t.to_zoned(zone.clone())
-                .strftime("%a, %d %b %Y %H:%M:%S %z")
-                .to_string()
-        })
-        .unwrap_or_else(|| "Mon, 01 Jan 0001 00:00:00 +0000".into())
-}
-
-pub(super) fn resources(out: &mut String, resources: &Value, level: usize) {
+pub(crate) fn resources(out: &mut String, resources: &Value, level: usize) {
     let indent = "  ".repeat(level);
     for (field, label) in [("limits", "Limits"), ("requests", "Requests")] {
         let mut pairs: Vec<_> = resources[field].as_object().into_iter().flatten().collect();
@@ -53,14 +35,14 @@ pub(super) fn resources(out: &mut String, resources: &Value, level: usize) {
             writeln!(
                 out,
                 "{indent}  {name}:\t{}",
-                super::quantity::canonical(&scalar(quantity))
+                crate::quantity::canonical(&scalar(quantity))
             )
             .unwrap();
         }
     }
 }
 
-pub(super) fn render(
+pub(crate) fn render(
     out: &mut String,
     label: &str,
     containers: &[Value],
@@ -242,7 +224,7 @@ fn state(out: &mut String, label: &str, state: &Value, zone: &TimeZone) {
         writeln!(
             out,
             "    {label}:\tRunning\n      Started:\t{}",
-            timestamp(&state["running"]["startedAt"], zone)
+            value_timestamp(&state["running"]["startedAt"], zone)
         )
         .unwrap();
     } else if !state["waiting"].is_null() {
@@ -265,8 +247,8 @@ fn state(out: &mut String, label: &str, state: &Value, zone: &TimeZone) {
         writeln!(
             out,
             "      Started:\t{}\n      Finished:\t{}",
-            timestamp(&term["startedAt"], zone),
-            timestamp(&term["finishedAt"], zone)
+            value_timestamp(&term["startedAt"], zone),
+            value_timestamp(&term["finishedAt"], zone)
         )
         .unwrap();
     } else {
@@ -385,8 +367,8 @@ fn resource_value(container: &Value, reference: &Value) -> String {
         return String::new();
     }
     let value =
-        super::quantity::parse(text(&container["resources"][category][name])).unwrap_or_default();
-    let divisor = super::quantity::parse(text(&reference["divisor"]))
+        crate::quantity::parse(text(&container["resources"][category][name])).unwrap_or_default();
+    let divisor = crate::quantity::parse(text(&reference["divisor"]))
         .filter(|q| *q != 0)
         .unwrap_or(1_000_000_000);
     let scale = if name == "cpu" {

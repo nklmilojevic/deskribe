@@ -3,19 +3,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // Adapted from kubectl v0.37.0 pkg/describe/describe.go. See LICENSE-APACHE.
 
-use super::*;
+use crate::api::list_objects;
+use crate::events::with_events;
+use crate::json::{integer, items, text};
+use crate::metadata::metadata;
+use k8s_openapi::api::core::v1::Event;
+use k8s_openapi::jiff::Timestamp;
+use kube::Client;
+use kube::api::{ApiResource, DynamicObject, ListParams};
 use serde_json::Value;
-fn text(v: &Value) -> &str {
-    v.as_str().unwrap_or_default()
-}
-fn items(v: &Value) -> &[Value] {
-    v.as_array().map(Vec::as_slice).unwrap_or_default()
-}
-fn integer(v: &Value) -> i64 {
-    v.as_i64().unwrap_or_default()
-}
+use std::fmt::Write;
 
-pub(super) async fn related(
+pub(crate) async fn related(
     client: Client,
     object: &DynamicObject,
 ) -> Result<Vec<DynamicObject>, kube::Error> {
@@ -37,7 +36,7 @@ pub(super) async fn related(
     .await
 }
 
-pub(super) fn render(
+pub(crate) fn render(
     object: &DynamicObject,
     slices: &[DynamicObject],
     events: Option<&[Event]>,
@@ -208,7 +207,7 @@ pub(super) fn render(
     with_events(out, events, now)
 }
 
-pub(super) fn endpoints(slices: &[DynamicObject], port_name: Option<&str>) -> String {
+pub(crate) fn endpoints(slices: &[DynamicObject], port_name: Option<&str>) -> String {
     if slices.is_empty() {
         return "<none>".into();
     }

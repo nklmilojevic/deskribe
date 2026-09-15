@@ -97,10 +97,22 @@ Rust tests cover synthetic output snapshots, resource accounting, and the public
 fetch/render API. They do not need a cluster or Go. Sofka keeps separate TUI
 integration tests.
 
+### Code structure
+
+- `resource.rs` selects the resource kind and event rules.
+- `fetch.rs` gathers data through the API helpers in `api.rs`.
+- `description.rs` stores the snapshot type and selects its renderer.
+- Resource modules contain the related reads and text rendering for each group.
+  Networking resources are in `networking/`; Jobs and CronJobs are in `batch.rs`.
+- `metadata.rs`, `events.rs`, `time.rs`, `format.rs`, and `json.rs` contain shared
+  functions.
+- `tests/corpus.rs` checks and updates fixtures through the public gather and
+  render API.
+
 After reviewing an intentional output change, regenerate snapshots with:
 
 ```sh
-DESKRIBE_UPDATE_FIXTURES=1 cargo test --locked render_matches_describe_regression_fixtures
+DESKRIBE_UPDATE_FIXTURES=1 cargo test --locked --test corpus public_gather_and_render_match_regression_corpus
 ```
 
 Review every changed snapshot. Regeneration alone does not prove correctness.

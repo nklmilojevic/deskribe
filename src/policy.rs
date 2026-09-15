@@ -3,25 +3,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // Adapted from kubectl v0.35.1 pkg/describe/describe.go. See LICENSE-APACHE.
 
-use super::*;
+use crate::events::with_events;
+use crate::json::{items, text};
+use crate::metadata::metadata;
+use k8s_openapi::api::core::v1::Event;
+use k8s_openapi::jiff::Timestamp;
+use kube::api::DynamicObject;
 use serde_json::Value;
+use std::fmt::Write;
 
-pub(super) fn supports(ar: &ApiResource) -> bool {
-    matches!(
-        (ar.group.as_str(), ar.kind.as_str()),
-        ("policy", "PodDisruptionBudget") | ("networking.k8s.io", "NetworkPolicy")
-    )
-}
-
-pub(super) fn events(ar: &ApiResource) -> bool {
-    ar.kind == "PodDisruptionBudget"
-}
-fn text(v: &Value) -> &str {
-    v.as_str().unwrap_or_default()
-}
-fn items(v: &Value) -> &[Value] {
-    v.as_array().map(Vec::as_slice).unwrap_or_default()
-}
 fn number_or_string(v: &Value) -> String {
     if let Some(s) = v.as_str() {
         s.into()
@@ -32,7 +22,7 @@ fn number_or_string(v: &Value) -> String {
     }
 }
 
-pub(super) fn selector(value: &Value) -> String {
+pub(crate) fn selector(value: &Value) -> String {
     if value.is_null() {
         return "<none>".into();
     }
@@ -68,7 +58,7 @@ pub(super) fn selector(value: &Value) -> String {
     }
 }
 
-pub(super) fn render(
+pub(crate) fn render(
     object: &DynamicObject,
     kind: &str,
     events: Option<&[Event]>,

@@ -3,15 +3,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // Adapted from kubectl v0.37.0 pkg/describe/describe.go. See LICENSE-APACHE.
 
-use super::*;
+use crate::events::with_events;
+use crate::json::{integer, items, text};
+use crate::metadata::{annotation_section, identity, label_section};
+use crate::time::{human_duration, value_timestamp};
+use crate::{pod, policy};
+use k8s_openapi::api::core::v1::Event;
+use k8s_openapi::jiff::Timestamp;
 use k8s_openapi::jiff::tz::TimeZone;
+use kube::api::DynamicObject;
 use serde_json::Value;
-fn text(v: &Value) -> &str {
-    v.as_str().unwrap_or_default()
-}
-fn items(v: &Value) -> &[Value] {
-    v.as_array().map(Vec::as_slice).unwrap_or_default()
-}
+use std::fmt::Write;
+
 fn scalar(v: &Value) -> String {
     v.as_str().map(str::to_owned).unwrap_or_else(|| {
         if v.is_null() {
@@ -21,86 +24,8 @@ fn scalar(v: &Value) -> String {
         }
     })
 }
-fn integer(v: &Value) -> i64 {
-    v.as_i64().unwrap_or_default()
-}
 
-pub(super) fn supports(ar: &ApiResource) -> bool {
-    ar.group == "batch" && matches!(ar.kind.as_str(), "Job" | "CronJob")
-}
-
-pub(super) fn template(out: &mut String, template: &Value, zone: &TimeZone) {
-    out.push_str("Pod Template:\n");
-    if template.is_null() {
-        out.push_str("  <unset>");
-        return;
-    }
-    let meta =
-        serde_json::from_value::<ObjectMeta>(template["metadata"].clone()).unwrap_or_default();
-    let header = metadata_header(&meta, false);
-    let labels = header
-        .split_once('\n')
-        .map(|(_, tail)| tail)
-        .unwrap_or_default();
-    // Upstream indents section titles but not continuation lines in templates.
-    let labels =
-        labels
-            .replacen("Labels:", "  Labels:", 1)
-            .replacen("Annotations:", "  Annotations:", 1);
-    if meta.annotations.as_ref().is_none_or(|a| a.is_empty()) {
-        out.push_str(
-            labels
-                .split_once("  Annotations:")
-                .map(|(head, _)| head)
-                .unwrap_or(&labels),
-        );
-    } else {
-        out.push_str(&labels);
-    }
-    let spec = &template["spec"];
-    if !text(&spec["serviceAccountName"]).is_empty() {
-        writeln!(
-            out,
-            "  Service Account:\t{}",
-            text(&spec["serviceAccountName"])
-        )
-        .unwrap();
-    }
-    if !items(&spec["initContainers"]).is_empty() {
-        containers::render(
-            out,
-            "Init Containers",
-            items(&spec["initContainers"]),
-            &[],
-            None,
-            "  ",
-            zone,
-        );
-    }
-    containers::render(
-        out,
-        "Containers",
-        items(&spec["containers"]),
-        &[],
-        None,
-        "  ",
-        zone,
-    );
-    volumes::render(out, items(&spec["volumes"]), "  ");
-    pod::topology(out, spec, "  ");
-    if !text(&spec["priorityClassName"]).is_empty() {
-        writeln!(
-            out,
-            "  Priority Class Name:\t{}",
-            text(&spec["priorityClassName"])
-        )
-        .unwrap();
-    }
-    pod::scheduling(out, spec, "  ");
-    pod::workload(out, spec, "  ");
-}
-
-pub(super) fn render(
+pub(crate) fn render(
     object: &DynamicObject,
     kind: &str,
     events: Option<&[Event]>,
@@ -109,17 +34,19 @@ pub(super) fn render(
 ) -> String {
     let spec = &object.data["spec"];
     let status = &object.data["status"];
-    let mut out = metadata(&object.metadata);
+    let mut out = identity(&object.metadata, true);
     if kind == "Job" {
         let selector = policy::selector(&spec["selector"]);
-        out = out.replacen(
-            "Labels:",
-            &format!(
-                "Selector:\t{}\nLabels:",
-                if selector == "<none>" { "" } else { &selector }
-            ),
-            1,
-        );
+        writeln!(
+            out,
+            "Selector:\t{}",
+            if selector == "<none>" { "" } else { &selector }
+        )
+        .unwrap();
+    }
+    out.push_str(&label_section(&object.metadata, ""));
+    out.push_str(&annotation_section(&object.metadata, ""));
+    if kind == "Job" {
         if let Some(owner) = object
             .metadata
             .owner_references
@@ -157,12 +84,7 @@ pub(super) fn render(
             ("completionTime", "Completed At"),
         ] {
             if !status[field].is_null() {
-                writeln!(
-                    out,
-                    "{label}:\t{}",
-                    containers::timestamp(&status[field], zone)
-                )
-                .unwrap();
+                writeln!(out, "{label}:\t{}", value_timestamp(&status[field], zone)).unwrap();
             }
         }
         if let (Ok(start), Ok(end)) = (
@@ -213,7 +135,7 @@ pub(super) fn render(
             };
             writeln!(out, "Completed Indexes:\t{indexes}").unwrap();
         }
-        template(&mut out, &spec["template"], zone);
+        pod::template(&mut out, &spec["template"], zone);
     } else {
         writeln!(
             out,
@@ -291,14 +213,14 @@ pub(super) fn render(
             )
             .unwrap();
         }
-        template(&mut out, &job["template"], zone);
+        pod::template(&mut out, &job["template"], zone);
         writeln!(
             out,
             "Last Schedule Time:\t{}",
             if status["lastScheduleTime"].is_null() {
                 "<unset>".into()
             } else {
-                containers::timestamp(&status["lastScheduleTime"], zone)
+                value_timestamp(&status["lastScheduleTime"], zone)
             }
         )
         .unwrap();

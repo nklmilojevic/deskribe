@@ -3,24 +3,22 @@
 // SPDX-License-Identifier: Apache-2.0
 // Adapted from kubectl v0.35.1 pkg/describe/describe.go. See LICENSE-APACHE.
 
-use super::*;
+use crate::api::list_objects;
+use crate::events::with_events;
+use crate::json::{items, text};
+use crate::metadata::{inline_annotations, inline_labels, metadata_header};
+use crate::time::age;
+use crate::time::{timestamp, value_timestamp};
+use crate::{quantity, volumes};
+use k8s_openapi::api::core::v1::Event;
+use k8s_openapi::jiff::Timestamp;
 use k8s_openapi::jiff::tz::TimeZone;
+use kube::Client;
+use kube::api::{ApiResource, DynamicObject, ListParams};
 use serde_json::Value;
-fn text(v: &Value) -> &str {
-    v.as_str().unwrap_or_default()
-}
-fn items(v: &Value) -> &[Value] {
-    v.as_array().map(Vec::as_slice).unwrap_or_default()
-}
-pub(super) fn supports(ar: &ApiResource) -> bool {
-    ar.group.is_empty()
-        && matches!(
-            ar.kind.as_str(),
-            "PersistentVolume" | "PersistentVolumeClaim"
-        )
-}
+use std::fmt::Write;
 
-pub(super) async fn related(
+pub(crate) async fn related(
     client: Client,
     object: &DynamicObject,
 ) -> Result<Vec<DynamicObject>, String> {
@@ -35,7 +33,7 @@ pub(super) async fn related(
     .map_err(|e| e.to_string())
 }
 
-pub(super) fn render(
+pub(crate) fn render(
     object: &DynamicObject,
     kind: &str,
     pods: &[DynamicObject],
@@ -237,8 +235,8 @@ pub(super) fn render(
                     "  {} \t{} \t{} \t{} \t{} \t{}",
                     text(&c["type"]),
                     text(&c["status"]),
-                    containers::timestamp(&c["lastProbeTime"], zone),
-                    containers::timestamp(&c["lastTransitionTime"], zone),
+                    value_timestamp(&c["lastProbeTime"], zone),
+                    value_timestamp(&c["lastTransitionTime"], zone),
                     text(&c["reason"]),
                     text(&c["message"])
                 )
@@ -261,4 +259,152 @@ fn access_modes(value: &Value) -> String {
     .map(|(_, short)| short)
     .collect::<Vec<_>>()
     .join(",")
+}
+
+pub(crate) fn render_class(
+    object: &DynamicObject,
+    events: Option<&[Event]>,
+    now: Timestamp,
+) -> String {
+    let value = &object.data;
+    let mut out = format!(
+        "Name:\t{}\n",
+        object.metadata.name.as_deref().unwrap_or_default()
+    );
+
+    let default = object.metadata.annotations.as_ref().is_some_and(|a| {
+        [
+            "storageclass.kubernetes.io/is-default-class",
+            "storageclass.beta.kubernetes.io/is-default-class",
+        ]
+        .iter()
+        .any(|key| a.get(*key).is_some_and(|v| v == "true"))
+    });
+    writeln!(out, "IsDefaultClass:\t{}\nAnnotations:\t{}\nProvisioner:\t{}\nParameters:\t{}\nAllowVolumeExpansion:\t{}", if default { "Yes" } else { "No" }, inline_annotations(object), text(&value["provisioner"]), inline_labels(&value["parameters"]), value["allowVolumeExpansion"].as_bool().map(|b| if b { "True" } else { "False" }).unwrap_or("<unset>")).unwrap();
+    let options = value["mountOptions"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    if options.is_empty() {
+        out.push_str("MountOptions:\t<none>\n");
+    } else {
+        out.push_str("MountOptions:\n");
+        for option in options {
+            writeln!(out, "  {}", text(&option)).unwrap();
+        }
+    }
+    for (field, label) in [
+        ("reclaimPolicy", "ReclaimPolicy"),
+        ("volumeBindingMode", "VolumeBindingMode"),
+    ] {
+        if !value[field].is_null() {
+            writeln!(out, "{label}:\t{}", text(&value[field])).unwrap();
+        }
+    }
+    if let Some(terms) = value["allowedTopologies"].as_array() {
+        out.push_str("AllowedTopologies:\t");
+        if terms.is_empty() {
+            out.push_str("<none>\n");
+        } else {
+            out.push('\n');
+            for (i, term) in terms.iter().enumerate() {
+                write!(out, "  Term {i}:\t").unwrap();
+                let reqs = term["matchLabelExpressions"]
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_default();
+                if reqs.is_empty() {
+                    out.push_str("<none>\n");
+                }
+                for (j, req) in reqs.iter().enumerate() {
+                    if j > 0 {
+                        out.push_str("  \t");
+                    }
+                    write!(out, "{} in", text(&req["key"])).unwrap();
+                    let values: Vec<_> = req["values"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .map(text)
+                        .collect();
+                    if !values.is_empty() {
+                        write!(out, " [{}]", values.join(", ")).unwrap();
+                    }
+                    out.push('\n');
+                }
+            }
+        }
+    }
+
+    with_events(out, events, now)
+}
+
+pub(crate) fn render_volume_attributes_class(
+    object: &DynamicObject,
+    events: Option<&[Event]>,
+    now: Timestamp,
+) -> String {
+    let value = &object.data;
+    let mut out = format!(
+        "Name:\t{}\n",
+        object.metadata.name.as_deref().unwrap_or_default()
+    );
+    writeln!(
+        out,
+        "Annotations:\t{}\nDriverName:\t{}\nParameters:\t{}",
+        inline_annotations(object),
+        text(&value["driverName"]),
+        inline_labels(&value["parameters"])
+    )
+    .unwrap();
+
+    with_events(out, events, now)
+}
+
+pub(crate) fn render_csi_node(
+    object: &DynamicObject,
+    events: Option<&[Event]>,
+    now: Timestamp,
+    zone: &TimeZone,
+) -> String {
+    let value = &object.data;
+    let mut out = metadata_header(&object.metadata, false);
+
+    let created = object
+        .metadata
+        .creation_timestamp
+        .as_ref()
+        .map(|t| t.0.to_string())
+        .unwrap_or_default();
+    writeln!(
+        out,
+        "CreationTimestamp:\t{}\nSpec:",
+        timestamp(&created, zone)
+    )
+    .unwrap();
+    if let Some(drivers) = value["spec"]["drivers"].as_array() {
+        out.push_str("  Drivers:\n");
+        for driver in drivers {
+            writeln!(
+                out,
+                "    {}:\n      Node ID:\t{}",
+                text(&driver["name"]),
+                text(&driver["nodeID"])
+            )
+            .unwrap();
+            if let Some(count) = driver["allocatable"]["count"].as_i64() {
+                writeln!(out, "      Allocatables:\n        Count:\t{count}").unwrap();
+            }
+            if let Some(keys) = driver["topologyKeys"].as_array() {
+                writeln!(
+                    out,
+                    "      Topology Keys:\t[{}]",
+                    keys.iter().map(text).collect::<Vec<_>>().join(" ")
+                )
+                .unwrap();
+            }
+        }
+    }
+
+    with_events(out, events, now)
 }

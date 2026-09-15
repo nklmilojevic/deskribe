@@ -4,17 +4,20 @@
 // Adapted from kubectl v0.37.0 pkg/describe/describe.go and pkg/util/qos/qos.go.
 // See LICENSE-APACHE.
 
-use super::*;
+use crate::events::with_events;
+use crate::json::{items, text};
+use crate::metadata::{annotation_section, label_section};
+use crate::time::{age, value_timestamp};
+use crate::{containers, node, policy, quantity, volumes};
+use k8s_openapi::api::core::v1::Event;
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
+use k8s_openapi::jiff::Timestamp;
 use k8s_openapi::jiff::tz::TimeZone;
+use kube::api::DynamicObject;
 use serde_json::Value;
-fn text(v: &Value) -> &str {
-    v.as_str().unwrap_or_default()
-}
-fn items(v: &Value) -> &[Value] {
-    v.as_array().map(Vec::as_slice).unwrap_or_default()
-}
+use std::fmt::Write;
 
-pub(super) fn render(
+pub(crate) fn render(
     object: &DynamicObject,
     events: Option<&[Event]>,
     now: Timestamp,
@@ -53,13 +56,12 @@ pub(super) fn render(
         writeln!(
             out,
             "Start Time:\t{}",
-            containers::timestamp(&status["startTime"], zone)
+            value_timestamp(&status["startTime"], zone)
         )
         .unwrap();
     }
-    let header = metadata(&object.metadata);
-    let labels = header.find("Labels:\t").unwrap();
-    out.push_str(&header[labels..]);
+    out.push_str(&label_section(&object.metadata, ""));
+    out.push_str(&annotation_section(&object.metadata, ""));
     if let Some(deleted) = &object.metadata.deletion_timestamp
         && !matches!(text(&status["phase"]), "Failed" | "Succeeded")
     {
@@ -179,7 +181,63 @@ pub(super) fn render(
     with_events(out, events, now)
 }
 
-pub(super) fn scheduling(out: &mut String, spec: &Value, space: &str) {
+pub(crate) fn template(out: &mut String, template: &Value, zone: &TimeZone) {
+    out.push_str("Pod Template:\n");
+    if template.is_null() {
+        out.push_str("  <unset>");
+        return;
+    }
+    let meta =
+        serde_json::from_value::<ObjectMeta>(template["metadata"].clone()).unwrap_or_default();
+    // Indent section titles only. Keep continuation lines at their current level.
+    out.push_str(&label_section(&meta, "  "));
+    if meta.annotations.as_ref().is_some_and(|a| !a.is_empty()) {
+        out.push_str(&annotation_section(&meta, "  "));
+    }
+    let spec = &template["spec"];
+    if !text(&spec["serviceAccountName"]).is_empty() {
+        writeln!(
+            out,
+            "  Service Account:\t{}",
+            text(&spec["serviceAccountName"])
+        )
+        .unwrap();
+    }
+    if !items(&spec["initContainers"]).is_empty() {
+        containers::render(
+            out,
+            "Init Containers",
+            items(&spec["initContainers"]),
+            &[],
+            None,
+            "  ",
+            zone,
+        );
+    }
+    containers::render(
+        out,
+        "Containers",
+        items(&spec["containers"]),
+        &[],
+        None,
+        "  ",
+        zone,
+    );
+    volumes::render(out, items(&spec["volumes"]), "  ");
+    topology(out, spec, "  ");
+    if !text(&spec["priorityClassName"]).is_empty() {
+        writeln!(
+            out,
+            "  Priority Class Name:\t{}",
+            text(&spec["priorityClassName"])
+        )
+        .unwrap();
+    }
+    scheduling(out, spec, "  ");
+    workload(out, spec, "  ");
+}
+
+pub(crate) fn scheduling(out: &mut String, spec: &Value, space: &str) {
     write!(out, "{space}Node-Selectors:\t").unwrap();
     let mut selectors: Vec<_> = spec["nodeSelector"]
         .as_object()
@@ -226,7 +284,7 @@ pub(super) fn scheduling(out: &mut String, spec: &Value, space: &str) {
     }
 }
 
-pub(super) fn topology(out: &mut String, spec: &Value, space: &str) {
+pub(crate) fn topology(out: &mut String, spec: &Value, space: &str) {
     let mut constraints: Vec<_> = items(&spec["topologySpreadConstraints"]).iter().collect();
     constraints.sort_by_key(|t| text(&t["topologyKey"]));
     if !constraints.is_empty() {
@@ -256,7 +314,7 @@ pub(super) fn topology(out: &mut String, spec: &Value, space: &str) {
     }
 }
 
-pub(super) fn workload(out: &mut String, spec: &Value, space: &str) {
+pub(crate) fn workload(out: &mut String, spec: &Value, space: &str) {
     if let Some(group) = spec["schedulingGroup"].as_object() {
         writeln!(
             out,

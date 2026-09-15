@@ -3,28 +3,24 @@
 // SPDX-License-Identifier: Apache-2.0
 // Adapted from kubectl v0.35.1 pkg/describe/describe.go. See LICENSE-APACHE.
 
-use super::*;
+use crate::events::with_events;
+use crate::json::{integer, items, text};
+use crate::metadata::metadata;
+use crate::time::value_timestamp;
+use k8s_openapi::api::core::v1::Event;
+use k8s_openapi::jiff::Timestamp;
 use k8s_openapi::jiff::tz::TimeZone;
+use kube::api::DynamicObject;
 use serde_json::Value;
-fn text(v: &Value) -> &str {
-    v.as_str().unwrap_or_default()
-}
-fn items(v: &Value) -> &[Value] {
-    v.as_array().map(Vec::as_slice).unwrap_or_default()
-}
-fn int(v: &Value) -> i64 {
-    v.as_i64().unwrap_or_default()
-}
+use std::fmt::Write;
+
 fn quantity(v: &Value) -> String {
     v.as_str()
-        .map(super::quantity::canonical)
+        .map(crate::quantity::canonical)
         .unwrap_or("<nil>".into())
 }
-pub(super) fn supports(ar: &ApiResource) -> bool {
-    ar.group == "autoscaling" && ar.kind == "HorizontalPodAutoscaler"
-}
 
-pub(super) fn render(
+pub(crate) fn render(
     object: &DynamicObject,
     events: Option<&[Event]>,
     now: Timestamp,
@@ -40,7 +36,7 @@ pub(super) fn render(
     writeln!(
         out,
         "CreationTimestamp:\t{}\nReference:\t{}/{}",
-        containers::timestamp(
+        value_timestamp(
             &serde_json::to_value(&object.metadata.creation_timestamp).unwrap_or_default(),
             zone
         ),
@@ -53,7 +49,7 @@ pub(super) fn render(
             writeln!(
                 out,
                 "Target CPU utilization:\t{}%\nCurrent CPU utilization:\t{}%",
-                int(&spec["targetCPUUtilizationPercentage"]),
+                integer(&spec["targetCPUUtilizationPercentage"]),
                 status["currentCPUUtilizationPercentage"]
                     .as_i64()
                     .map(|n| n.to_string())
@@ -155,7 +151,7 @@ pub(super) fn render(
                         let current = if available && !current["averageUtilization"].is_null() {
                             format!(
                                 "{}% ({})",
-                                int(&current["averageUtilization"]),
+                                integer(&current["averageUtilization"]),
                                 quantity(&current["averageValue"])
                             )
                         } else {
@@ -179,7 +175,7 @@ pub(super) fn render(
             .as_i64()
             .map(|n| n.to_string())
             .unwrap_or("<unset>".into()),
-        int(&spec["maxReplicas"])
+        integer(&spec["maxReplicas"])
     )
     .unwrap();
     if !legacy && !spec["behavior"].is_null() {
@@ -194,7 +190,7 @@ pub(super) fn render(
                 writeln!(
                     out,
                     "    Stabilization Window: {} seconds",
-                    int(&rules["stabilizationWindowSeconds"])
+                    integer(&rules["stabilizationWindowSeconds"])
                 )
                 .unwrap();
             }
@@ -211,8 +207,8 @@ pub(super) fn render(
                         out,
                         "      - Type: {}\tValue: {}\tPeriod: {} seconds",
                         text(&p["type"]),
-                        int(&p["value"]),
-                        int(&p["periodSeconds"])
+                        integer(&p["value"]),
+                        integer(&p["periodSeconds"])
                     )
                     .unwrap();
                 }
@@ -223,8 +219,8 @@ pub(super) fn render(
         out,
         "{} pods:\t{} current / {} desired",
         text(&spec["scaleTargetRef"]["kind"]),
-        int(&status["currentReplicas"]),
-        int(&status["desiredReplicas"])
+        integer(&status["currentReplicas"]),
+        integer(&status["desiredReplicas"])
     )
     .unwrap();
     let conditions = items(&status["conditions"]);

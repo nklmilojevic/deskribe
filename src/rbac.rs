@@ -4,8 +4,13 @@
 // Adapted from kubectl v0.35.1 pkg/describe/describe.go and pkg/util/rbac/rbac.go.
 // See LICENSE-APACHE.
 
-use super::*;
+use crate::format::tabbed;
+use crate::json::text;
+use crate::metadata::metadata_header;
+use kube::api::DynamicObject;
 use serde_json::Value;
+use std::collections::BTreeMap;
+use std::fmt::Write;
 
 #[derive(Default)]
 struct Rule {
@@ -42,11 +47,7 @@ fn strings(value: &Value) -> Vec<String> {
         .collect()
 }
 
-pub(super) fn supports(ar: &ApiResource) -> bool {
-    ar.group == "rbac.authorization.k8s.io" && matches!(ar.kind.as_str(), "Role" | "ClusterRole")
-}
-
-pub(super) fn render(object: &DynamicObject) -> String {
+pub(crate) fn render(object: &DynamicObject) -> String {
     let mut simple: BTreeMap<(String, String, Option<String>), Rule> = BTreeMap::new();
     let mut rules = Vec::new();
     for rule in object.data["rules"].as_array().into_iter().flatten() {
@@ -114,5 +115,24 @@ pub(super) fn render(object: &DynamicObject) -> String {
         )
         .unwrap();
     }
+    tabbed(&out)
+}
+
+pub(crate) fn render_binding(object: &DynamicObject) -> String {
+    let value = &object.data;
+    let mut out = metadata_header(&object.metadata, false);
+
+    writeln!(out, "Role:\n  Kind:\t{}\n  Name:\t{}\nSubjects:\n  Kind\tName\tNamespace\n  ----\t----\t---------", text(&value["roleRef"]["kind"]), text(&value["roleRef"]["name"])).unwrap();
+    for subject in value["subjects"].as_array().into_iter().flatten() {
+        writeln!(
+            out,
+            "  {}\t{}\t{}",
+            text(&subject["kind"]),
+            text(&subject["name"]),
+            text(&subject["namespace"])
+        )
+        .unwrap();
+    }
+
     tabbed(&out)
 }

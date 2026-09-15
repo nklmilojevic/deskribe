@@ -248,3 +248,26 @@ async fn failed_fallback_preserves_the_primary_error() {
         assert_eq!(object_paths(&requests), [primary, fallback]);
     }
 }
+
+#[test]
+fn routing_requires_exact_supported_core_resource() {
+    for (group, version, kind, supported) in [
+        ("", "v1", "ConfigMap", true),
+        ("", "v1", "Secret", true),
+        ("", "v1", "Pod", true),
+        ("example.com", "v1", "Secret", true),
+        ("", "v2", "Secret", false),
+        ("", "v2", "ConfigMap", false),
+        ("example.com", "v1", "Widget", true),
+    ] {
+        assert_eq!(
+            deskribe::supports(&resource(group, version, kind)),
+            supported
+        );
+    }
+    for kind in ["Secret", "ConfigMap"] {
+        let mut ar = resource("", "v1", kind);
+        ar.plural = "other".into();
+        assert!(!deskribe::supports(&ar));
+    }
+}

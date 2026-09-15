@@ -3,22 +3,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // Adapted from kubectl v0.35.1 pkg/describe/describe.go. See LICENSE-APACHE.
 
-use super::*;
-use serde_json::Value;
+use crate::events::with_events;
+use crate::json::{items, text};
+use crate::metadata::metadata;
+use k8s_openapi::api::core::v1::Event;
+use k8s_openapi::jiff::Timestamp;
+use kube::api::DynamicObject;
+use std::fmt::Write;
 
-pub(super) fn supports(ar: &ApiResource) -> bool {
-    matches!(
-        (ar.group.as_str(), ar.kind.as_str()),
-        ("", "Endpoints") | ("discovery.k8s.io", "EndpointSlice")
-    )
-}
-
-fn text(v: &Value) -> &str {
-    v.as_str().unwrap_or_default()
-}
-fn items(v: &Value) -> &[Value] {
-    v.as_array().map(Vec::as_slice).unwrap_or_default()
-}
 fn nonempty(s: &str, default: &str) -> String {
     if s.is_empty() {
         default.into()
@@ -27,7 +19,7 @@ fn nonempty(s: &str, default: &str) -> String {
     }
 }
 
-pub(super) fn render(
+pub(crate) fn render(
     object: &DynamicObject,
     kind: &str,
     events: Option<&[Event]>,

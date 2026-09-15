@@ -3,19 +3,24 @@
 // SPDX-License-Identifier: Apache-2.0
 // Adapted from kubectl describers; see NOTICE and LICENSE-APACHE.
 
-use super::*;
-use crate::description::Related;
+use crate::api::{fetch_events, fetch_object};
+use crate::description::Snapshot;
+use crate::networking::{ingress, service};
+use crate::resource::{EventPolicy, ResourceKind};
+use crate::{Description, RenderOptions, controllers, node, quotas, storage};
+use kube::{
+    Client,
+    api::{ApiResource, DynamicObject},
+};
 
-/// Fresh GET and identity-checked related reads; dropping this future cancels
-/// outstanding requests. Never reads kubeconfig, spawns kubectl, or uses a cache.
+/// Read a fresh object and check its UID before related reads.
+/// Drop this future to cancel outstanding requests.
 pub async fn gather(
     client: Client,
     ar: &ApiResource,
     selected: &DynamicObject,
 ) -> Result<Description, String> {
-    if !supports(ar) {
-        return Err("native describe unsupported".into());
-    }
+    let kind = ResourceKind::classify(ar).ok_or("native describe unsupported")?;
     let ns = selected.metadata.namespace.as_deref().unwrap_or_default();
     let name = selected
         .metadata
@@ -23,20 +28,12 @@ pub async fn gather(
         .as_deref()
         .ok_or("resource name is missing")?;
     let get = fetch_object(client.clone(), ar, ns, name);
-    let prefetch = selected
-        .metadata
-        .uid
-        .as_deref()
-        .is_some_and(|uid| !uid.is_empty())
-        && !(ar.group.is_empty() && matches!(ar.kind.as_str(), "Pod" | "Node" | "Secret"))
-        && !quotas::supports(ar)
-        && !rbac::supports(ar)
-        && !controllers::supports(ar)
-        && !ingress::supports(ar)
-        && !(ar.group.is_empty()
-            && matches!(ar.kind.as_str(), "Service" | "PersistentVolumeClaim"))
-        && (!classes::supports(ar) || classes::events(ar))
-        && (!policy::supports(ar) || policy::events(ar));
+    let prefetch = kind.prefetch_events()
+        && selected
+            .metadata
+            .uid
+            .as_deref()
+            .is_some_and(|uid| !uid.is_empty());
     let (fetched, prefetched_events) = if prefetch {
         match tokio::try_join!(get, async {
             Ok::<_, kube::Error>(fetch_events(client.clone(), &selected.metadata, &ar.kind).await)
@@ -50,7 +47,7 @@ pub async fn gather(
     let fresh = match fetched {
         Ok(fresh) => fresh,
         Err(error) => {
-            if ar.group.is_empty() && ar.kind == "Pod" {
+            if kind == ResourceKind::Pod {
                 let mut reference = selected.metadata.clone();
                 reference.uid = None;
                 if let Ok(events) = fetch_events(client, &reference, "").await
@@ -62,9 +59,8 @@ pub async fn gather(
                     };
                     return Ok(Description {
                         object: selected.clone(),
-                        resource: ar.clone(),
                         events: Some(events),
-                        related: Related::PodGetFailure(format!(
+                        snapshot: Snapshot::PodGetFailure(format!(
                             "Pod '{name}': error '{message}', but found events.\n"
                         )),
                     });
@@ -78,90 +74,108 @@ pub async fn gather(
             "resource was replaced; return to the table and select the new resource".into(),
         );
     }
-    let event_client = client.clone();
-    let event_metadata = fresh.metadata.clone();
-    let resource_events = async move {
-        match prefetched_events {
-            Some(events) => events,
-            None => fetch_events(event_client, &event_metadata, &ar.kind).await,
-        }
-    };
-    let mut events = None;
-    let related = if ar.group.is_empty() && ar.kind == "Node" {
-        Related::Node(Box::new(node::related(client, &fresh).await?))
-    } else if ingress::supports(ar) {
-        let (backends, result) =
-            tokio::join!(ingress::related(client.clone(), &fresh), resource_events);
-        events = result.ok();
-        Related::Ingress(backends)
-    } else if storage::supports(ar) {
-        let (pods, result) = tokio::join!(
-            async {
-                if ar.kind == "PersistentVolumeClaim" {
-                    storage::related(client.clone(), &fresh).await
-                } else {
-                    Ok(Vec::new())
+    let resource_events = async {
+        match kind.events() {
+            EventPolicy::Skip => Ok(None),
+            EventPolicy::Pod => {
+                let mut reference = fresh.metadata.clone();
+                if let Some(uid) = reference
+                    .annotations
+                    .as_ref()
+                    .and_then(|a| a.get("kubernetes.io/config.mirror"))
+                {
+                    reference.uid = Some(uid.clone());
                 }
-            },
-            resource_events
-        );
-        events = result.ok();
-        Related::Storage(pods?)
-    } else if quotas::supports(ar) {
-        let (quotas, limits) = if ar.kind == "Namespace" {
-            quotas::related(client, &fresh).await?
-        } else {
-            (None, None)
-        };
-        Related::Quotas { quotas, limits }
-    } else if ar.group.is_empty() && ar.kind == "Pod" {
-        let mut reference = fresh.metadata.clone();
-        if let Some(uid) = reference
-            .annotations
-            .as_ref()
-            .and_then(|a| a.get("kubernetes.io/config.mirror"))
-        {
-            reference.uid = Some(uid.clone());
+                Ok(fetch_events(client.clone(), &reference, "").await.ok())
+            }
+            EventPolicy::Optional | EventPolicy::Required => {
+                let result = match prefetched_events {
+                    Some(events) => events,
+                    None => fetch_events(client.clone(), &fresh.metadata, &ar.kind).await,
+                };
+                if kind.events() == EventPolicy::Required {
+                    result.map(Some)
+                } else {
+                    Ok(result.ok())
+                }
+            }
         }
-        events = fetch_events(client, &reference, "").await.ok();
-        Related::None
-    } else if ar.group.is_empty() && ar.kind == "Service" {
-        let (slices, result) =
-            tokio::join!(service::related(client.clone(), &fresh), resource_events);
-        events = result.ok();
-        Related::Service(slices.unwrap_or_default())
-    } else if controllers::supports(ar) {
-        let (related, result) = tokio::join!(
-            controllers::related(client.clone(), &fresh, &ar.kind),
-            resource_events
-        );
-        events = result.ok();
-        Related::Controller(related)
-    } else {
-        if !(ar.group.is_empty() && ar.kind == "Secret")
-            && !rbac::supports(ar)
-            && (!classes::supports(ar) || classes::events(ar))
-            && (!policy::supports(ar) || policy::events(ar))
-        {
-            let result = resource_events.await;
-            events = if ar.group.is_empty() && ar.kind == "ConfigMap" {
-                Some(result?)
-            } else {
-                result.ok()
-            };
-        }
-        Related::None
     };
+    let related = async {
+        let snapshot = match kind {
+            ResourceKind::Pod => Snapshot::Pod,
+            ResourceKind::Service => Snapshot::Service(
+                service::related(client.clone(), &fresh)
+                    .await
+                    .unwrap_or_default(),
+            ),
+            ResourceKind::Node => {
+                Snapshot::Node(Box::new(node::related(client.clone(), &fresh).await?))
+            }
+            ResourceKind::ConfigMap => Snapshot::ConfigMap,
+            ResourceKind::Secret => Snapshot::Secret,
+            ResourceKind::ReplicationController => Snapshot::ReplicationController(
+                controllers::related(client.clone(), &fresh, "ReplicationController").await,
+            ),
+            ResourceKind::ServiceAccount => Snapshot::ServiceAccount,
+            ResourceKind::LimitRange => Snapshot::LimitRange,
+            ResourceKind::ResourceQuota => Snapshot::ResourceQuota,
+            ResourceKind::PersistentVolume => Snapshot::PersistentVolume,
+            ResourceKind::PersistentVolumeClaim => {
+                Snapshot::PersistentVolumeClaim(storage::related(client.clone(), &fresh).await?)
+            }
+            ResourceKind::Namespace => {
+                let (quotas, limits) = quotas::related(client.clone(), &fresh).await?;
+                Snapshot::Namespace { quotas, limits }
+            }
+            ResourceKind::Endpoints => Snapshot::Endpoints,
+            ResourceKind::EndpointSlice => Snapshot::EndpointSlice,
+            ResourceKind::HorizontalPodAutoscaler => Snapshot::HorizontalPodAutoscaler,
+            ResourceKind::Ingress => {
+                Snapshot::Ingress(ingress::related(client.clone(), &fresh).await)
+            }
+            ResourceKind::IngressClass => Snapshot::IngressClass,
+            ResourceKind::ServiceCIDR => Snapshot::ServiceCIDR,
+            ResourceKind::IPAddress => Snapshot::IPAddress,
+            ResourceKind::NetworkPolicy => Snapshot::NetworkPolicy,
+            ResourceKind::Job => Snapshot::Job,
+            ResourceKind::CronJob => Snapshot::CronJob,
+            ResourceKind::StatefulSet => Snapshot::StatefulSet(
+                controllers::related(client.clone(), &fresh, "StatefulSet").await,
+            ),
+            ResourceKind::Deployment => Snapshot::Deployment(
+                controllers::related(client.clone(), &fresh, "Deployment").await,
+            ),
+            ResourceKind::DaemonSet => {
+                Snapshot::DaemonSet(controllers::related(client.clone(), &fresh, "DaemonSet").await)
+            }
+            ResourceKind::ReplicaSet => Snapshot::ReplicaSet(
+                controllers::related(client.clone(), &fresh, "ReplicaSet").await,
+            ),
+            ResourceKind::CertificateSigningRequest => Snapshot::CertificateSigningRequest,
+            ResourceKind::StorageClass => Snapshot::StorageClass,
+            ResourceKind::CSINode => Snapshot::CSINode,
+            ResourceKind::VolumeAttributesClass => Snapshot::VolumeAttributesClass,
+            ResourceKind::PodDisruptionBudget => Snapshot::PodDisruptionBudget,
+            ResourceKind::Role => Snapshot::Role,
+            ResourceKind::ClusterRole => Snapshot::ClusterRole,
+            ResourceKind::RoleBinding => Snapshot::RoleBinding,
+            ResourceKind::ClusterRoleBinding => Snapshot::ClusterRoleBinding,
+            ResourceKind::PriorityClass => Snapshot::PriorityClass,
+            ResourceKind::Generic => Snapshot::Generic,
+        };
+        Ok::<_, String>(snapshot)
+    };
+    let (snapshot, events) = tokio::join!(related, resource_events);
     Ok(Description {
         object: fresh,
-        resource: ar.clone(),
-        events,
-        related,
+        snapshot: snapshot?,
+        events: events?,
     })
 }
 
-/// Gather fresh data and render it using the current time and local timezone.
-/// Use [`gather`] and [`Description::render`] separately to control rendering.
+/// Gather fresh data and render it with the current time and local timezone.
+/// Use [`gather`] and [`Description::render`] to control rendering separately.
 pub async fn fetch(
     client: Client,
     ar: &ApiResource,
