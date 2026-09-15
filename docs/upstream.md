@@ -4,6 +4,12 @@ Deskribe follows selected Kubernetes describers and helpers. We review upstream
 source changes and port relevant behavior into Rust. We do not build Go or use
 upstream output as a live test oracle.
 
+The monitor does not replace maintenance work. Each update needs a person to
+review the report, apply relevant changes, and check the result. A source change
+does not always require a Rust change. There is no promise of an update for every
+kubectl release or exact output compatibility with every version. Any change in
+project ownership must include an agreement about who will do this work.
+
 ## What the workflow checks
 
 [`upstream.json`](../upstream.json) defines a reviewed baseline tag and source

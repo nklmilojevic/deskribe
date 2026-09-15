@@ -71,12 +71,63 @@ cannot be recalled.
 Deskribe does not load kubeconfig, run subprocesses, create a runtime, print to
 stdout, or manage a UI. Those are the caller's responsibilities.
 
+## Permissions
+
+Deskribe uses the identity and permissions of the supplied client. **Permission
+to `get` the selected object alone may not be sufficient.** Descriptions can also
+need `get` or `list` access to related resources. No write permissions are needed.
+
+The client needs `get` access to the selected resource in its namespace, or at
+cluster scope for a resource that has no namespace. The following table lists
+additional reads. Resource names use the plural names found in RBAC rules;
+`core` means the empty API group (`apiGroups: [""]`).
+
+| Description | Additional permission | Scope |
+| --- | --- | --- |
+| Kinds that read events, including custom resources | `list` core `events` | Object namespace; all namespaces for objects with no namespace |
+| Service | `list` `discovery.k8s.io` `endpointslices` | Service namespace |
+| Ingress with Service backends | `get` core `services`; `list` `discovery.k8s.io` `endpointslices` | Ingress namespace |
+| Deployment | `list` `apps` `replicasets` | Deployment namespace |
+| ReplicaSet, ReplicationController, DaemonSet, StatefulSet | `list` core `pods` | Object namespace |
+| PersistentVolumeClaim | `list` core `pods` | Claim namespace |
+| Namespace | `list` core `resourcequotas` and `limitranges` | Described namespace |
+| Node | `list` core `pods` and `events` | All namespaces |
+| Node | `get` `coordination.k8s.io` `leases` | `kube-node-lease` namespace; lease name matches the Node name |
+| Node | `list` `resource.k8s.io` `resourceslices` | Cluster |
+
+Secret, Namespace, ResourceQuota, LimitRange, Role, ClusterRole, RoleBinding,
+ClusterRoleBinding, and NetworkPolicy descriptions do not read events. All other
+supported kinds can read events. Add the event permission to the related-resource
+permissions in the table where applicable.
+
+### Denied access
+
+The result depends on which read is denied:
+
+- A denied read of the selected object normally makes `gather` return an error.
+  The Pod exception is described below.
+- A denied event list makes ConfigMap `gather` return an error. For other kinds,
+  failed event reads do not stop the description.
+- A denied pod list for a PersistentVolumeClaim, or a denied quota or limit list
+  for a Namespace, makes `gather` return an error.
+- A denied pod list for a ReplicationController, DaemonSet, or StatefulSet makes
+  `render` return an error. ReplicaSet output includes the pod-list error.
+  Deployment output omits related ReplicaSet data if that list fails.
+- A failed Service EndpointSlice list is treated as an empty list. The output can
+  show no endpoints even when access was denied. Ingress output includes an error
+  for a Service backend if its Service or EndpointSlice read fails.
+- For a Node, a denied pod list (HTTP 403) omits pod and resource usage sections.
+  A failed lease read appears as an error in the output. A failed ResourceSlice
+  list is treated as an empty list. These failures do not stop the description.
+
+A successful description can therefore contain incomplete data. Empty or absent
+sections do not always mean that no related resources exist.
+
 ## Errors and sensitive data
 
-The client needs permission to read the object and the related resources used by
-its describer. Errors are returned as strings. Some optional reads are best-effort;
-for example, denied or unavailable ResourceSlice access does not fail a Node
-description.
+Errors are returned as strings. Both `gather` and `render` can return errors;
+`fetch` returns errors from either step. See [denied access](#denied-access) for
+permission failures.
 
 If a Pod read fails but events are available, its description can show the error
 and those events. In that case, `Description::object()` returns the original
@@ -133,6 +184,11 @@ code, advance the baseline, or open pull requests.
 
 See [upstream maintenance](docs/upstream.md) for local commands and review steps.
 This checks source changes, not Rust output parity or every upstream dependency.
+
+Each update still needs a person to review the changes, apply relevant behavior
+changes in Rust, and test the result. An upstream refactor or test change may need
+no Rust change. The recorded baseline does not promise exact output compatibility
+with that kubectl version, or an update for every kubectl release.
 
 ## Publishing
 
