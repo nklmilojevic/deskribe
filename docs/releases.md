@@ -38,7 +38,13 @@ OIDC token. Pushing a tag alone does not start publishing.
 
 ## Routine releases
 
-Install Rust (with rustfmt and clippy), Python 3.11+, Git, GitHub CLI, and `just`.
+Install Rust through rustup, Python 3.11+, Git, GitHub CLI, and `just`.
+`rust-toolchain.toml` pins Rust 1.97.0 with rustfmt and clippy. Rustup uses this
+file locally, and both release jobs read the same version instead of floating
+`stable`. Update this file and run the checks when upgrading Rust. If your local
+Rust comes from Nix or another non-rustup installation, keep that toolchain at
+the same version too.
+
 Authenticate GitHub CLI with permission to push and create releases. Like sofka,
 the recipes use `op plugin run -- gh` when the 1Password CLI is installed.
 
