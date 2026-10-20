@@ -30,6 +30,8 @@ package:
 
 # Check, dry-run the crate, then cut a release with vesnik.
 release:
+    @test "$(git branch --show-current)" = main || { echo "release from main" >&2; exit 1; }
+    git pull --ff-only origin main
     just check
     K8S_OPENAPI_ENABLED_VERSION=1.36 cargo publish --locked --dry-run
     vesnik release --yes

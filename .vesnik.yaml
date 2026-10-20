@@ -5,3 +5,4 @@ style:
   product: "Kubernetes resource descriptions in Rust, without starting kubectl"
 
 breaking_bumps_minor: true
+branch: main

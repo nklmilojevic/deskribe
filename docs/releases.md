@@ -55,7 +55,8 @@ just release
 
 The recipe:
 
-1. Runs `just check` and a publish dry run of the crate. Both run before the
+1. Fast-forwards `main` from `origin`, so the checks see the commit that ships.
+   Then runs `just check` and a publish dry run of the crate. Both run before the
    version changes, so the dry run checks the current manifest, not the new
    version. The dry run also refuses a dirty tree.
 2. Runs `vesnik release --yes`. vesnik picks the next version from the commits
