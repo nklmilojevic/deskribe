@@ -1,8 +1,6 @@
 set unstable
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
-mod release '.just/release.just'
-
 default:
     @just --list
 
@@ -30,11 +28,11 @@ check: fmt-check clippy test
 package:
     K8S_OPENAPI_ENABLED_VERSION=1.36 cargo publish --locked --dry-run
 
-# Release a patch version.
-release-patch: release::patch
-
-# Release a minor version.
-release-minor: release::minor
-
-# Release a major version.
-release-major: release::major
+# Check, dry-run the crate, then cut a release with vesnik.
+release:
+    @test "$(git branch --show-current)" = main || { echo "release from main" >&2; exit 1; }
+    @test -z "$(git status --porcelain)" || { echo "release from a clean tree: vesnik commits untracked files it writes to, such as CHANGELOG.md" >&2; git status --short >&2; exit 1; }
+    git pull --ff-only origin main
+    just check
+    K8S_OPENAPI_ENABLED_VERSION=1.36 cargo publish --locked --dry-run
+    vesnik release --yes

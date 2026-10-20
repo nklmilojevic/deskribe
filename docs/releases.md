@@ -38,37 +38,38 @@ OIDC token. Pushing a tag alone does not start publishing.
 
 ## Routine releases
 
-Install Rust through rustup, Python 3.11+, Git, GitHub CLI, and `just`.
+Install Rust through rustup, Python 3.11+, Git, GitHub CLI, `just`, `vesnik`
+(`github:nklmilojevic/vesnik`), and the Claude CLI.
 `rust-toolchain.toml` pins Rust 1.97.0 with rustfmt and clippy. Rustup uses this
 file locally, and both release jobs read the same version instead of floating
 `stable`. Update this file and run the checks when upgrading Rust. If your local
 Rust comes from Nix or another non-rustup installation, keep that toolchain at
 the same version too.
 
-Authenticate GitHub CLI with permission to push and create releases. Like sofka,
-the recipes use `op plugin run -- gh` when the 1Password CLI is installed.
+Authenticate GitHub CLI with permission to push and create releases, and log in
+to the Claude CLI: `.vesnik.yaml` uses the `claude` provider to write the notes,
+and the release stops if it cannot.
 
 Merge reviewed changes first. Start on a clean `main` with no untracked files:
 
 ```sh
-just release patch
-# or: just release minor
-# or: just release major
+just release
 ```
 
-The aliases `just release-patch`, `just release-minor`, and `just release-major`
-do the same thing. The recipe:
+The recipe:
 
-1. Checks authentication and cleanliness, fetches tags, and fast-forwards `main`.
-   It refuses local commits that are not on `origin/main`.
-2. Computes the next version from the latest non-draft, non-prerelease GitHub
-   Release. If none exists, it bumps the current manifest version. For example,
-   after bootstrapping `0.1.0`, the first `just release patch` makes `0.1.1`.
-3. Updates `Cargo.toml` and lets Cargo update `Cargo.lock`. Runs `just check` and
-   a publish dry run. The dry run permits the deliberate uncommitted version bump.
-4. Commits the version change as `chore(release): vX.Y.Z` and pushes `main`.
-5. Creates a GitHub Release with generated notes at that exact commit. The release
-   workflow validates and publishes the crate after any environment approval.
+1. Refuses to run off `main` or with any changed or untracked file, then
+   fast-forwards `main` from `origin`, so the checks see the commit that ships.
+   Then runs `just check` and a publish dry run of the crate. Both run before the
+   version changes, so the dry run checks the current manifest, not the new
+   version. The dry run also refuses a dirty tree.
+2. Runs `vesnik release --yes`. vesnik picks the next version from the commits
+   since the latest tag. Below `1.0.0`, breaking changes bump the minor version.
+   It updates `Cargo.toml` and `Cargo.lock`, writes `CHANGELOG.md`, commits
+   `chore(release): vX.Y.Z`, pushes `main`, tags that commit, and creates a
+   GitHub Release.
+3. The release workflow validates and publishes the crate after any environment
+   approval.
 
 These commands push commits and create releases. They are not dry runs. Review
 any failure before retrying; the recipe does not roll back a version bump or a
