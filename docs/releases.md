@@ -38,14 +38,17 @@ OIDC token. Pushing a tag alone does not start publishing.
 
 ## Routine releases
 
-Install Rust through rustup, Python 3.11+, Git, GitHub CLI, `just`, and `vesnik`.
+Install Rust through rustup, Python 3.11+, Git, GitHub CLI, `just`, `vesnik`
+(`github:nklmilojevic/vesnik`), and the Claude CLI.
 `rust-toolchain.toml` pins Rust 1.97.0 with rustfmt and clippy. Rustup uses this
 file locally, and both release jobs read the same version instead of floating
 `stable`. Update this file and run the checks when upgrading Rust. If your local
 Rust comes from Nix or another non-rustup installation, keep that toolchain at
 the same version too.
 
-Authenticate GitHub CLI with permission to push and create releases.
+Authenticate GitHub CLI with permission to push and create releases, and log in
+to the Claude CLI: `.vesnik.yaml` uses the `claude` provider to write the notes,
+and the release stops if it cannot.
 
 Merge reviewed changes first. Start on a clean `main` with no untracked files:
 
@@ -55,7 +58,8 @@ just release
 
 The recipe:
 
-1. Fast-forwards `main` from `origin`, so the checks see the commit that ships.
+1. Refuses to run off `main` or with any changed or untracked file, then
+   fast-forwards `main` from `origin`, so the checks see the commit that ships.
    Then runs `just check` and a publish dry run of the crate. Both run before the
    version changes, so the dry run checks the current manifest, not the new
    version. The dry run also refuses a dirty tree.
