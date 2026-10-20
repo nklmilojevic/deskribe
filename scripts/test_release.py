@@ -2,7 +2,6 @@
 
 import os
 from pathlib import Path
-import shutil
 import subprocess
 import tempfile
 import textwrap
@@ -62,60 +61,6 @@ class ReleaseTagTests(unittest.TestCase):
                         text=True,
                     )
                     self.assertEqual(result.returncode == 0, valid, result.stdout + result.stderr)
-
-
-@unittest.skipUnless(shutil.which("just"), "just is required for release recipe tests")
-class ReleaseRecipeTests(unittest.TestCase):
-    def run_just(self, *args, cwd=ROOT):
-        return subprocess.run(
-            ["just", "--justfile", str(cwd / "Justfile"), *args],
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-        )
-
-    def test_version_bumps(self):
-        for latest, bump, expected in [
-            ("v0.1.0", "patch", "0.1.1"),
-            ("v0.1.9", "minor", "0.2.0"),
-            ("v0.9.9", "major", "1.0.0"),
-            ("v1.9.9", "patch", "1.9.10"),
-        ]:
-            with self.subTest(latest=latest, bump=bump):
-                result = self.run_just("release", "_next-version", latest, bump)
-                self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(result.stdout.strip(), expected)
-
-    def test_rejects_invalid_versions_and_bumps(self):
-        for latest, bump in [
-            ("v1.2", "patch"),
-            ("v1.2.3.4", "patch"),
-            ("v1.2.3-rc.1", "patch"),
-            ("v01.2.3", "minor"),
-            ("v1.2.3", "invalid"),
-        ]:
-            with self.subTest(latest=latest, bump=bump):
-                self.assertNotEqual(self.run_just("release", "_next-version", latest, bump).returncode, 0)
-
-    def test_rejects_feature_branch_and_dirty_main_before_network(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            shutil.copy(ROOT / "Justfile", root)
-            shutil.copytree(ROOT / ".just", root / ".just")
-            subprocess.run(["git", "init", "-q", "-b", "feature"], cwd=root, check=True)
-            result = self.run_just("release", "_ensure-release-ready", cwd=root)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("release from main only", result.stderr)
-            subprocess.run(["git", "symbolic-ref", "HEAD", "refs/heads/main"], cwd=root, check=True)
-            result = self.run_just("release", "_ensure-release-ready", cwd=root)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("working tree and index must be clean", result.stderr)
-
-    def test_aliases_parse_without_running_release(self):
-        for bump in ["patch", "minor", "major"]:
-            result = self.run_just("--dry-run", f"release-{bump}")
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn(f"_release {bump}", result.stderr)
 
 
 if __name__ == "__main__":

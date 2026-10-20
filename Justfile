@@ -1,8 +1,6 @@
 set unstable
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
-mod release '.just/release.just'
-
 default:
     @just --list
 
@@ -30,11 +28,8 @@ check: fmt-check clippy test
 package:
     K8S_OPENAPI_ENABLED_VERSION=1.36 cargo publish --locked --dry-run
 
-# Release a patch version.
-release-patch: release::patch
-
-# Release a minor version.
-release-minor: release::minor
-
-# Release a major version.
-release-major: release::major
+# Check, dry-run the crate, then cut a release with vesnik.
+release:
+    just check
+    K8S_OPENAPI_ENABLED_VERSION=1.36 cargo publish --locked --dry-run
+    vesnik release --yes

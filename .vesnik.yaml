@@ -1,0 +1,7 @@
+provider: claude
+model: claude-haiku-5-5
+
+style:
+  product: "Kubernetes resource descriptions in Rust, without starting kubectl"
+
+breaking_bumps_minor: true
