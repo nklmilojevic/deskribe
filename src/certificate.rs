@@ -104,8 +104,10 @@ pub(crate) fn render(
             }
             String::from_utf16(
                 &bytes
-                    .chunks_exact(2)
-                    .map(|c| u16::from_be_bytes([c[0], c[1]]))
+                    .as_chunks::<2>()
+                    .0
+                    .iter()
+                    .map(|&pair| u16::from_be_bytes(pair))
                     .collect::<Vec<_>>(),
             )
             .map_err(|_| "Error parsing CSR: invalid BMPString")?
