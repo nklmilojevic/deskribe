@@ -3,5 +3,14 @@
   "extends": [
     "local>nklmilojevic/renovate-config",
     "helpers:pinGitHubActionDigests"
+  ],
+  "packageRules": [
+    {
+      "description": "kube requires a matching k8s-openapi, so update them together",
+      "matchManagers": ["cargo"],
+      "matchPackageNames": ["kube", "/^kube-/", "k8s-openapi"],
+      "groupName": "kubernetes crates",
+      "separateMajorMinor": false
+    }
   ]
 }
