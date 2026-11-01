@@ -20,7 +20,7 @@ OIDC token. Pushing a tag alone does not start publishing.
 
    ```sh
    # Supply CARGO_REGISTRY_TOKEN securely for this command; do not commit it.
-   K8S_OPENAPI_ENABLED_VERSION=1.36 cargo publish --locked
+   K8S_OPENAPI_ENABLED_VERSION=1.37 cargo publish --locked
    ```
 
    This uploads a real release and requires explicit maintainer approval. Do not
@@ -80,7 +80,7 @@ just check
 just package
 ```
 
-Package verification and publishing set `K8S_OPENAPI_ENABLED_VERSION=1.36` because
+Package verification and publishing set `K8S_OPENAPI_ENABLED_VERSION=1.37` because
 Cargo does not build dev-dependencies during package verification. This is a
 build-only schema choice, not a default feature imposed on consumers. Keep it
 in sync with the supported schemas when upgrading `k8s-openapi`.
