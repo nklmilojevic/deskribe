@@ -20,13 +20,13 @@ Add these dependencies to your application's `Cargo.toml`:
 
 ```toml
 [dependencies]
-deskribe = "0.1.2"
-kube = { version = "4.2", default-features = false, features = ["client", "rustls-tls", "aws-lc-rs"] }
-k8s-openapi = { version = "0.28", features = ["latest"] }
+deskribe = "0.2"
+kube = { version = "5.0", default-features = false, features = ["client", "rustls-tls", "aws-lc-rs"] }
+k8s-openapi = { version = "0.29", features = ["latest"] }
 ```
 
 Your application chooses the Kubernetes schema and TLS features. The example
-above uses the latest schema available in `k8s-openapi` 0.28 and rustls. Deskribe
+above uses the latest schema available in `k8s-openapi` 0.29 and rustls. Deskribe
 does not choose these features for you.
 
 ```rust

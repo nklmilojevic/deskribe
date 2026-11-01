@@ -19,7 +19,7 @@ jobs:
       RELEASE_TAG: ${{ github.event.release.tag_name }}
       # Package verification does not build dev-dependencies. Keep the library
       # schema-neutral and select a schema only for this build.
-      K8S_OPENAPI_ENABLED_VERSION: "1.36"
+      K8S_OPENAPI_ENABLED_VERSION: "1.37"
     steps:
       - name: Checkout release tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -73,7 +73,7 @@ jobs:
       id-token: write
     env:
       RELEASE_TAG: ${{ github.event.release.tag_name }}
-      K8S_OPENAPI_ENABLED_VERSION: "1.36"
+      K8S_OPENAPI_ENABLED_VERSION: "1.37"
     steps:
       - name: Checkout release tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
